@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "puzzle:upsert-day": "node scripts/upsert-daily-puzzle.mjs"
+    "puzzle:upsert-day": "node scripts/upsert-daily-puzzle.mjs",
+    "user:set-admin": "node scripts/set-user-admin.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.1",
