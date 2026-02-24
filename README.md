@@ -72,7 +72,7 @@ pnpm db:push
 6. Assign a puzzle to today (required before gameplay):
 
 ```bash
-pnpm puzzle:upsert-day -- --date "$(date +%F)" --preset month-day-counts
+pnpm puzzle:upsert-day -- --date "$(date +%F)" --json '{"key":"puzzle-'"$(date +%F)"'","answer":"Example answer","data":{"1":3,"2":8}}'
 ```
 
 7. Run locally:

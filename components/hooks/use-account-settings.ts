@@ -22,6 +22,7 @@ export function useAccountSettings({
   const [accountName, setAccountName] = useState<string | null>(null);
   const [friendId, setFriendId] = useState<string | null>(null);
   const [displayHints, setDisplayHints] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [settingsName, setSettingsName] = useState("");
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -37,6 +38,7 @@ export function useAccountSettings({
       setAccountName(null);
       setFriendId(null);
       setDisplayHints(false);
+      setIsAdmin(false);
       setSettingsName("");
       setIsSettingsOpen(false);
       setIsLoadingAccount(false);
@@ -62,6 +64,7 @@ export function useAccountSettings({
           displayName?: string;
           friendId?: string;
           displayHints?: boolean;
+          isAdmin?: boolean;
         };
 
         if (!response.ok) {
@@ -78,10 +81,12 @@ export function useAccountSettings({
             ? payload.friendId.trim()
             : null;
         const loadedDisplayHints = payload.displayHints === true;
+        const loadedIsAdmin = payload.isAdmin === true;
 
         setAccountName(loadedName);
         setFriendId(loadedFriendId);
         setDisplayHints(loadedDisplayHints);
+        setIsAdmin(loadedIsAdmin);
         setSettingsName(loadedName);
       } catch (caught) {
         if (isAbortError(caught)) {
@@ -132,6 +137,7 @@ export function useAccountSettings({
         displayName?: string;
         friendId?: string;
         displayHints?: boolean;
+        isAdmin?: boolean;
       };
 
       if (!response.ok) {
@@ -148,10 +154,12 @@ export function useAccountSettings({
           ? payload.friendId.trim()
           : null;
       const nextDisplayHints = payload.displayHints === true;
+      const nextIsAdmin = payload.isAdmin === true;
 
       setAccountName(nextName);
       setFriendId(nextFriendId);
       setDisplayHints(nextDisplayHints);
+      setIsAdmin(nextIsAdmin);
       setSettingsName(nextName);
       toast.success("Settings updated.");
       setIsSettingsOpen(false);
@@ -190,6 +198,7 @@ export function useAccountSettings({
       setAccountName(null);
       setFriendId(null);
       setDisplayHints(false);
+      setIsAdmin(false);
       setSettingsName("");
       setIsSettingsOpen(false);
 
@@ -207,6 +216,7 @@ export function useAccountSettings({
     shownUsername,
     friendId,
     displayHints,
+    isAdmin,
     setDisplayHints,
     isSettingsOpen,
     setIsSettingsOpen,

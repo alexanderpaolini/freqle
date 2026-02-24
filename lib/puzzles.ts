@@ -1,19 +1,17 @@
 import { db } from "@/lib/db";
 
 export type Puzzle = {
-  id: string;
-  preview: Record<number, number>;
-  solutionLabel: string;
+  key: string;
+  dateKey: string;
   answer: string;
-  acceptedAnswers: string[];
+  data: Record<number, number>;
 };
 
 const puzzleSelect = {
-  id: true,
-  preview: true,
-  solutionLabel: true,
+  key: true,
+  dateKey: true,
   answer: true,
-  acceptedAnswers: true,
+  data: true,
 } as const;
 
 export function getDateKey(date = new Date()): string {
@@ -32,18 +30,14 @@ export async function getDailyPuzzleFromDateKey(
 ): Promise<Puzzle | null> {
   const normalizedDateKey = sanitizeDateKey(dateKey) ?? getDateKey();
 
-  const exact = await db.dailyPuzzle.findUnique({
+  const exact = await db.puzzle.findUnique({
     where: {
       dateKey: normalizedDateKey,
     },
-    select: {
-      puzzle: {
-        select: puzzleSelect,
-      },
-    },
+    select: puzzleSelect,
   });
 
-  return parsePuzzle(exact?.puzzle);
+  return parsePuzzle(exact);
 }
 
 export async function getRequiredPuzzleFromDateKey(
@@ -55,14 +49,14 @@ export async function getRequiredPuzzleFromDateKey(
   }
 
   throw new Error(
-    "No puzzles are configured in the database. Run `pnpm puzzle:upsert-day -- --date YYYY-MM-DD --preset month-day-counts` first.",
+    'No puzzles are configured in the database. Run `pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json \'{"key":"puzzle-YYYY-MM-DD","answer":"Example answer","data":{"1":3}}\'` first.',
   );
 }
 
 export function getPuzzlePreviewEntries(
   puzzle: Puzzle,
 ): Array<{ key: string; value: string }> {
-  return Object.entries(puzzle.preview)
+  return Object.entries(puzzle.data)
     .map(([key, value]) => ({
       numericKey: Number(key),
       key: String(key),
@@ -91,11 +85,10 @@ function sanitizeDateKey(input?: string): string | null {
 function parsePuzzle(
   value:
     | {
-        id: string;
-        preview: unknown;
-        solutionLabel: string;
+        key: string;
+        dateKey: string;
         answer: string;
-        acceptedAnswers: string[];
+        data: unknown;
       }
     | null
     | undefined,
@@ -104,35 +97,27 @@ function parsePuzzle(
     return null;
   }
 
-  const preview = parsePreview(value.preview);
-  if (!preview) {
+  const data = parsePuzzleData(value.data);
+  if (!data) {
     return null;
   }
 
-  const id = value.id.trim();
-  const solutionLabel = value.solutionLabel.trim();
+  const key = value.key.trim();
+  const dateKey = value.dateKey.trim();
   const answer = value.answer.trim();
-  if (!id || !solutionLabel || !answer) {
+  if (!key || !dateKey || !answer) {
     return null;
   }
-
-  const acceptedAnswers = Array.isArray(value.acceptedAnswers)
-    ? value.acceptedAnswers
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    : [];
 
   return {
-    id,
-    preview,
-    solutionLabel,
+    key,
+    dateKey,
     answer,
-    acceptedAnswers,
+    data,
   };
 }
 
-function parsePreview(value: unknown): Record<number, number> | null {
+export function parsePuzzleData(value: unknown): Record<number, number> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }

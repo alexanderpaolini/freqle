@@ -9,6 +9,7 @@ import type { PuzzlePreviewEntry } from "./types";
 type GamePanelProps = {
   status: "authenticated" | "loading" | "unauthenticated";
   shownUsername: string;
+  isAdmin: boolean;
   isSettingsOpen: boolean;
   settingsName: string;
   displayHints: boolean;
@@ -41,6 +42,7 @@ type GamePanelProps = {
 export function GamePanel({
   status,
   shownUsername,
+  isAdmin,
   isSettingsOpen,
   settingsName,
   displayHints,
@@ -75,6 +77,7 @@ export function GamePanel({
         <AuthHeader
           status={status}
           shownUsername={shownUsername}
+          isAdmin={isAdmin}
           isSettingsOpen={isSettingsOpen}
           settingsName={settingsName}
           displayHints={displayHints}

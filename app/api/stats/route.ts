@@ -6,8 +6,16 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const dateKey = sanitizeDateKey(url.searchParams.get("dateKey"));
 
-  const resolvedAssignment = await resolvePuzzleAssignment(dateKey);
-  if (!resolvedAssignment) {
+  const puzzle = await db.puzzle.findUnique({
+    where: {
+      dateKey,
+    },
+    select: {
+      key: true,
+    },
+  });
+
+  if (!puzzle) {
     return NextResponse.json({
       dateKey,
       totalSolves: 0,
@@ -17,15 +25,6 @@ export async function GET(request: Request) {
     });
   }
 
-  const puzzleDates: Array<{ dateKey: string }> = await db.dailyPuzzle.findMany({
-    where: {
-      puzzleId: resolvedAssignment.puzzleId,
-    },
-    select: {
-      dateKey: true,
-    },
-  });
-
   const solvedAttempts: Array<{ solvedIn: number | null }> =
     await db.gameAttempt.findMany({
       where: {
@@ -33,9 +32,7 @@ export async function GET(request: Request) {
         solvedIn: {
           not: null,
         },
-        puzzleDate: {
-          in: puzzleDates.map((entry) => entry.dateKey),
-        },
+        puzzleDate: dateKey,
       },
       select: {
         solvedIn: true,
@@ -62,21 +59,6 @@ function sanitizeDateKey(input: string | null): string {
   }
 
   return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : getDateKey();
-}
-
-async function resolvePuzzleAssignment(dateKey: string): Promise<{
-  dateKey: string;
-  puzzleId: string;
-} | null> {
-  return db.dailyPuzzle.findUnique({
-    where: {
-      dateKey,
-    },
-    select: {
-      dateKey: true,
-      puzzleId: true,
-    },
-  });
 }
 
 function buildDistribution(values: number[]) {

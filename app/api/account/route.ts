@@ -34,6 +34,7 @@ export async function GET() {
     displayName: player.displayName ?? session.user.name ?? "player",
     friendId,
     displayHints: player.displayHints,
+    isAdmin: player.isAdmin,
   });
 }
 
@@ -105,6 +106,7 @@ export async function PATCH(request: Request) {
       (hasDisplayName ? displayName : session.user.name ?? "player"),
     friendId,
     displayHints: player.displayHints,
+    isAdmin: player.isAdmin,
   });
 }
 

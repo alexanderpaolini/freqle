@@ -13,6 +13,7 @@ model Player {
   friendCode     String?      @unique
   displayName    String?
   displayHints   Boolean      @default(false)
+  isAdmin        Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   attempts       GameAttempt[]
@@ -22,24 +23,12 @@ model Player {
 }
 
 model Puzzle {
-  id              String       @id
-  preview         Json
-  solutionLabel   String
-  answer          String
-  acceptedAnswers String[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  dailyPuzzles    DailyPuzzle[]
-}
-
-model DailyPuzzle {
-  dateKey   String   @id
-  puzzleId  String
-  puzzle    Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Restrict)
+  key       String   @id
+  dateKey   String   @unique
+  answer    String
+  data      Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([puzzleId])
 }
 
 model GameAttempt {

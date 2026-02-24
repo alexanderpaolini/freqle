@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       gaveUp: true,
       isSolved: false,
-      revealedAnswer: puzzle.solutionLabel,
+      revealedAnswer: puzzle.answer,
     });
   }
 
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     gaveUp: true,
     isSolved: false,
-    revealedAnswer: puzzle.solutionLabel,
+    revealedAnswer: puzzle.answer,
   });
 }
 

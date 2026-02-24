@@ -291,7 +291,7 @@ async function buildAttemptResponse(
     triesUsed,
     isSolved,
     gaveUp,
-    revealedAnswer: gaveUp ? puzzle?.solutionLabel ?? null : null,
+    revealedAnswer: gaveUp ? puzzle?.answer ?? null : null,
     noTriesLeft: false,
   });
 }

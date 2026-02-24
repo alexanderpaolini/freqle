@@ -74,6 +74,8 @@ export default async function Page({ searchParams }: HomePageProps) {
   const shareId = normalizeShareCode(params.share);
   const dailyPuzzle = await getDailyPuzzle();
   if (!dailyPuzzle) {
+    const exampleCommand = `pnpm puzzle:upsert-day -- --date ${getDateKey()} --json '{"key":"puzzle-${getDateKey()}","answer":"Example answer","data":{"1":3,"2":8}}'`;
+
     return (
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#f8efe2_45%,#efe5d6)] px-4 py-8 text-stone-900">
         <div className="mx-auto w-full max-w-3xl rounded-xl border border-stone-300 bg-white p-6">
@@ -82,11 +84,7 @@ export default async function Page({ searchParams }: HomePageProps) {
           </p>
           <h1 className="mt-2 text-2xl font-semibold">No puzzle configured yet</h1>
           <p className="mt-3 text-sm text-stone-700">
-            Run{" "}
-            <code>
-              pnpm puzzle:upsert-day -- --date {getDateKey()} --preset month-day-counts
-            </code>{" "}
-            and refresh.
+            Run <code>{exampleCommand}</code> and refresh.
           </p>
         </div>
       </main>

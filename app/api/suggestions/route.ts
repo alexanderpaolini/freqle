@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   let puzzleId: string;
   try {
     const puzzle = await getRequiredPuzzleFromDateKey(dateKey);
-    puzzleId = puzzle.id;
+    puzzleId = puzzle.key;
   } catch {
     return NextResponse.json(
       { error: "No puzzle is configured for that date yet." },

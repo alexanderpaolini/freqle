@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { Cog } from "lucide-react";
 import { AddFriendDialog } from "./add-friend-dialog";
+import { AdminPanelDialog } from "./admin-panel-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import { SettingsPopover } from "./settings-popover";
 type AuthHeaderProps = {
   status: "authenticated" | "loading" | "unauthenticated";
   shownUsername: string;
+  isAdmin: boolean;
   isSettingsOpen: boolean;
   settingsName: string;
   displayHints: boolean;
@@ -31,6 +33,7 @@ type AuthHeaderProps = {
 export function AuthHeader({
   status,
   shownUsername,
+  isAdmin,
   isSettingsOpen,
   settingsName,
   displayHints,
@@ -63,6 +66,8 @@ export function AuthHeader({
             <Button type="button" variant="outline" onClick={onSignOut}>
               Sign out
             </Button>
+
+            {isAdmin ? <AdminPanelDialog /> : null}
 
             <DropdownMenu
               open={isSettingsOpen}

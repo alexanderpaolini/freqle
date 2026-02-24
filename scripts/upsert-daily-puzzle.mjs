@@ -7,14 +7,12 @@ import { PrismaClient } from "../generated/prisma-client/index.js";
 
 const HELP_TEXT = `Usage:
   pnpm puzzle:upsert-day -- --date YYYY-MM-DD --file ./puzzle.json
-  pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json '{"id":"...","preview":{"1":2},"solutionLabel":"...","answer":"...","acceptedAnswers":["..."]}'
+  pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json '{"key":"...","answer":"...","data":{"1":2}}'
 
 Optional overrides:
-  --id <puzzle-id>
-  --label <solution label>
+  --key <puzzle-key>
   --answer <canonical answer>
-  --preview '<json object>'
-  --accepted '<json array>' or 'alt one,alt two'
+  --data '<json object>'
 `;
 
 async function main() {
@@ -30,9 +28,13 @@ async function main() {
   }
 
   const parsedPuzzle = resolvePuzzleInput(args);
-  const puzzle = normalizePuzzle(parsedPuzzle);
+  const puzzle = normalizePuzzle(parsedPuzzle, dateKey);
 
   const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    fail("DATABASE_URL is required.");
+  }
+
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString }),
   });
@@ -40,45 +42,27 @@ async function main() {
   try {
     const upsertedPuzzle = await prisma.puzzle.upsert({
       where: {
-        id: puzzle.id,
-      },
-      create: {
-        id: puzzle.id,
-        preview: puzzle.preview,
-        solutionLabel: puzzle.solutionLabel,
-        answer: puzzle.answer,
-        acceptedAnswers: puzzle.acceptedAnswers,
-      },
-      update: {
-        preview: puzzle.preview,
-        solutionLabel: puzzle.solutionLabel,
-        answer: puzzle.answer,
-        acceptedAnswers: puzzle.acceptedAnswers,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    const assignment = await prisma.dailyPuzzle.upsert({
-      where: {
         dateKey,
       },
       create: {
+        key: puzzle.key,
         dateKey,
-        puzzleId: upsertedPuzzle.id,
+        answer: puzzle.answer,
+        data: puzzle.data,
       },
       update: {
-        puzzleId: upsertedPuzzle.id,
+        key: puzzle.key,
+        answer: puzzle.answer,
+        data: puzzle.data,
       },
       select: {
+        key: true,
         dateKey: true,
-        puzzleId: true,
       },
     });
 
     console.log(
-      `Assigned puzzle "${assignment.puzzleId}" to ${assignment.dateKey}.`,
+      `Assigned puzzle "${upsertedPuzzle.key}" to ${upsertedPuzzle.dateKey}.`,
     );
   } finally {
     await prisma.$disconnect();
@@ -108,43 +92,29 @@ function resolvePuzzleInput(args) {
 
   const merged = Object.assign({}, ...pieces);
 
-  if (args.id) {
-    merged.id = args.id;
-  }
-
-  if (args.label) {
-    merged.solutionLabel = args.label;
+  if (args.key) {
+    merged.key = args.key;
   }
 
   if (args.answer) {
     merged.answer = args.answer;
   }
 
-  if (args.preview) {
-    merged.preview = parseJson(args.preview, "--preview");
-  }
-
-  if (args.accepted) {
-    merged.acceptedAnswers = parseAcceptedAnswers(args.accepted);
+  if (args.data) {
+    merged.data = parseJson(args.data, "--data");
   }
 
   return merged;
 }
 
-function normalizePuzzle(input) {
+function normalizePuzzle(input, dateKey) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     fail("Puzzle must be an object.");
   }
 
-  const id = typeof input.id === "string" ? input.id.trim() : "";
-  if (!id) {
-    fail("Puzzle id is required.");
-  }
-
-  const solutionLabel =
-    typeof input.solutionLabel === "string" ? input.solutionLabel.trim() : "";
-  if (!solutionLabel) {
-    fail("Puzzle solutionLabel is required.");
+  const key = typeof input.key === "string" ? input.key.trim() : "";
+  if (!key) {
+    fail("Puzzle key is required.");
   }
 
   const answer = typeof input.answer === "string" ? input.answer.trim() : "";
@@ -152,34 +122,24 @@ function normalizePuzzle(input) {
     fail("Puzzle answer is required.");
   }
 
-  const preview = normalizePreview(input.preview);
-
-  const acceptedAnswers = Array.isArray(input.acceptedAnswers)
-    ? input.acceptedAnswers
-        .filter((entry) => typeof entry === "string")
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    : [];
+  const data = normalizeData(input.data);
 
   return {
-    id,
-    preview,
-    solutionLabel,
+    key,
+    dateKey,
     answer,
-    acceptedAnswers,
+    data,
   };
 }
 
-function normalizePreview(preview) {
-  if (!preview || typeof preview !== "object" || Array.isArray(preview)) {
-    fail(
-      "Puzzle preview must be a JSON object of number keys to number counts.",
-    );
+function normalizeData(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    fail("Puzzle data must be a JSON object of number keys to number counts.");
   }
 
-  const entries = Object.entries(preview);
+  const entries = Object.entries(data);
   if (entries.length === 0) {
-    fail("Puzzle preview cannot be empty.");
+    fail("Puzzle data cannot be empty.");
   }
 
   const normalized = {};
@@ -188,12 +148,12 @@ function normalizePreview(preview) {
     const value = Number(rawValue);
 
     if (!Number.isFinite(key) || !Number.isInteger(key)) {
-      fail(`Invalid preview key \"${rawKey}\". Keys must be integers.`);
+      fail(`Invalid data key "${rawKey}". Keys must be integers.`);
     }
 
     if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
       fail(
-        `Invalid preview count for key \"${rawKey}\". Counts must be non-negative integers.`,
+        `Invalid data value for key "${rawKey}". Values must be non-negative integers.`,
       );
     }
 
@@ -201,30 +161,6 @@ function normalizePreview(preview) {
   }
 
   return normalized;
-}
-
-function parseAcceptedAnswers(value) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return [];
-  }
-
-  if (trimmed.startsWith("[")) {
-    const parsed = parseJson(trimmed, "--accepted");
-    if (!Array.isArray(parsed)) {
-      fail("--accepted JSON value must be an array of strings.");
-    }
-
-    return parsed
-      .filter((entry) => typeof entry === "string")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  }
-
-  return trimmed
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 function parseDateKey(value) {
@@ -246,6 +182,10 @@ function parseArgs(argv) {
     }
 
     const key = token.slice(2);
+    if (!key) {
+      continue;
+    }
+
     const nextToken = argv[index + 1];
     if (nextToken && !nextToken.startsWith("--")) {
       parsed[key] = nextToken;

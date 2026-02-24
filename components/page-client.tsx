@@ -82,6 +82,7 @@ export function PageClient({
   const {
     shownUsername,
     friendId,
+    isAdmin,
     isSettingsOpen,
     setIsSettingsOpen,
     settingsName,
@@ -143,6 +144,7 @@ export function PageClient({
         <GamePanel
           status={status}
           shownUsername={shownUsername}
+          isAdmin={isAdmin}
           isSettingsOpen={isSettingsOpen}
           settingsName={settingsName}
           displayHints={displayHints}

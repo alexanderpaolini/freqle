@@ -51,7 +51,6 @@ export async function scoreGuessWithOpenRouter({
             content: [
               "Determine whether the guess matches the intended dataset.",
               `Canonical answer: "${puzzle.answer}"`,
-              `Accepted alternate answers: ${puzzle.acceptedAnswers.join(", ")}`,
               `User guess: "${guess}"`,
               "Rules:",
               "- score: integer between 0 and 100.",
