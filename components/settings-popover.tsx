@@ -7,24 +7,28 @@ import { copyTextToClipboard } from "./home-client-utils";
 
 type SettingsPopoverProps = {
   settingsName: string;
+  displayHints: boolean;
   friendId: string | null;
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
   isDeletingAccount: boolean;
   onClose: () => void;
   onSettingsNameChange: (value: string) => void;
+  onDisplayHintsChange: (value: boolean) => void;
   onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteAccount: () => void;
 };
 
 export function SettingsPopover({
   settingsName,
+  displayHints,
   friendId,
   isLoadingAccount,
   isSavingSettings,
   isDeletingAccount,
   onClose,
   onSettingsNameChange,
+  onDisplayHintsChange,
   onSaveSettings,
   onDeleteAccount,
 }: SettingsPopoverProps) {
@@ -60,12 +64,26 @@ export function SettingsPopover({
           maxLength={40}
           disabled={isLoadingAccount || isSavingSettings || isDeletingAccount}
         />
+        <label
+          htmlFor="settings-display-hints"
+          className="mt-1 flex items-center gap-2 text-sm text-stone-700"
+        >
+          <input
+            id="settings-display-hints"
+            type="checkbox"
+            checked={displayHints}
+            onChange={(event) => onDisplayHintsChange(event.target.checked)}
+            disabled={isLoadingAccount || isSavingSettings || isDeletingAccount}
+            className="h-4 w-4 rounded border-stone-300"
+          />
+          Display hints
+        </label>
         <Button
           type="submit"
           disabled={isLoadingAccount || isSavingSettings || isDeletingAccount}
           className="mt-1"
         >
-          {isSavingSettings ? "Saving..." : "Save username"}
+          {isSavingSettings ? "Saving..." : "Save settings"}
         </Button>
       </form>
 

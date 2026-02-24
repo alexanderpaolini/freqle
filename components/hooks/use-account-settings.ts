@@ -21,6 +21,7 @@ export function useAccountSettings({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [accountName, setAccountName] = useState<string | null>(null);
   const [friendId, setFriendId] = useState<string | null>(null);
+  const [displayHints, setDisplayHints] = useState(false);
   const [settingsName, setSettingsName] = useState("");
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -35,6 +36,7 @@ export function useAccountSettings({
     if (status !== "authenticated") {
       setAccountName(null);
       setFriendId(null);
+      setDisplayHints(false);
       setSettingsName("");
       setIsSettingsOpen(false);
       setIsLoadingAccount(false);
@@ -59,6 +61,7 @@ export function useAccountSettings({
           error?: string;
           displayName?: string;
           friendId?: string;
+          displayHints?: boolean;
         };
 
         if (!response.ok) {
@@ -74,9 +77,11 @@ export function useAccountSettings({
           typeof payload.friendId === "string" && payload.friendId.trim()
             ? payload.friendId.trim()
             : null;
+        const loadedDisplayHints = payload.displayHints === true;
 
         setAccountName(loadedName);
         setFriendId(loadedFriendId);
+        setDisplayHints(loadedDisplayHints);
         setSettingsName(loadedName);
       } catch (caught) {
         if (isAbortError(caught)) {
@@ -118,6 +123,7 @@ export function useAccountSettings({
         },
         body: JSON.stringify({
           displayName: trimmedName,
+          displayHints,
         }),
       });
 
@@ -125,10 +131,11 @@ export function useAccountSettings({
         error?: string;
         displayName?: string;
         friendId?: string;
+        displayHints?: boolean;
       };
 
       if (!response.ok) {
-        toast.error(payload.error ?? "Could not update username.");
+        toast.error(payload.error ?? "Could not update settings.");
         return;
       }
 
@@ -140,14 +147,16 @@ export function useAccountSettings({
         typeof payload.friendId === "string" && payload.friendId.trim()
           ? payload.friendId.trim()
           : null;
+      const nextDisplayHints = payload.displayHints === true;
 
       setAccountName(nextName);
       setFriendId(nextFriendId);
+      setDisplayHints(nextDisplayHints);
       setSettingsName(nextName);
-      toast.success("Username updated.");
+      toast.success("Settings updated.");
       setIsSettingsOpen(false);
     } catch {
-      toast.error("Could not update username.");
+      toast.error("Could not update settings.");
     } finally {
       setIsSavingSettings(false);
     }
@@ -180,6 +189,7 @@ export function useAccountSettings({
 
       setAccountName(null);
       setFriendId(null);
+      setDisplayHints(false);
       setSettingsName("");
       setIsSettingsOpen(false);
 
@@ -196,6 +206,8 @@ export function useAccountSettings({
   return {
     shownUsername,
     friendId,
+    displayHints,
+    setDisplayHints,
     isSettingsOpen,
     setIsSettingsOpen,
     settingsName,

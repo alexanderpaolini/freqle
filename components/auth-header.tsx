@@ -14,6 +14,7 @@ type AuthHeaderProps = {
   shownUsername: string;
   isSettingsOpen: boolean;
   settingsName: string;
+  displayHints: boolean;
   friendId: string | null;
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
@@ -22,6 +23,7 @@ type AuthHeaderProps = {
   onSignOut: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onSettingsNameChange: (value: string) => void;
+  onDisplayHintsChange: (value: boolean) => void;
   onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteAccount: () => void;
 };
@@ -31,6 +33,7 @@ export function AuthHeader({
   shownUsername,
   isSettingsOpen,
   settingsName,
+  displayHints,
   friendId,
   isLoadingAccount,
   isSavingSettings,
@@ -39,6 +42,7 @@ export function AuthHeader({
   onSignOut,
   onSettingsOpenChange,
   onSettingsNameChange,
+  onDisplayHintsChange,
   onSaveSettings,
   onDeleteAccount,
 }: AuthHeaderProps) {
@@ -77,12 +81,14 @@ export function AuthHeader({
               <DropdownMenuContent align="end" className="w-72 p-0">
                 <SettingsPopover
                   settingsName={settingsName}
+                  displayHints={displayHints}
                   friendId={friendId}
                   isLoadingAccount={isLoadingAccount}
                   isSavingSettings={isSavingSettings}
                   isDeletingAccount={isDeletingAccount}
                   onClose={() => onSettingsOpenChange(false)}
                   onSettingsNameChange={onSettingsNameChange}
+                  onDisplayHintsChange={onDisplayHintsChange}
                   onSaveSettings={onSaveSettings}
                   onDeleteAccount={onDeleteAccount}
                 />

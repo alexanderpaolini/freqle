@@ -123,17 +123,23 @@ export function readAttemptFromStorage(dateKey: string): GuessResult[] {
       return [];
     }
 
-    return parsed.filter(
-      (entry): entry is GuessResult =>
-        typeof entry === "object" &&
-        entry !== null &&
-        "guess" in entry &&
-        typeof entry.guess === "string" &&
-        "score" in entry &&
-        typeof entry.score === "number" &&
-        "correct" in entry &&
-        typeof entry.correct === "boolean",
-    );
+    return parsed
+      .filter(
+        (entry): entry is GuessResult =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "guess" in entry &&
+          typeof entry.guess === "string" &&
+          "score" in entry &&
+          typeof entry.score === "number" &&
+          "correct" in entry &&
+          typeof entry.correct === "boolean" &&
+          (!("reason" in entry) || typeof entry.reason === "string"),
+      )
+      .map((entry) => ({
+        ...entry,
+        reason: typeof entry.reason === "string" ? entry.reason : "",
+      }));
   } catch {
     return [];
   }

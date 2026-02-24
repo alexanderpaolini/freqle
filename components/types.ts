@@ -2,6 +2,7 @@ export type GuessResult = {
   guess: string;
   score: number;
   correct: boolean;
+  reason?: string;
 };
 
 export type DistributionBucket = {
@@ -14,6 +15,19 @@ export type PuzzleStats = {
   average: number | null;
   median: number | null;
   distribution: DistributionBucket[];
+};
+
+export type FriendResultStatus =
+  | "solved"
+  | "gave_up"
+  | "in_progress"
+  | "pending";
+
+export type FriendResult = {
+  friendId: string;
+  displayName: string;
+  status: FriendResultStatus;
+  tries: number;
 };
 
 export type SharedSummary = {

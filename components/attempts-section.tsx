@@ -5,6 +5,7 @@ import type { GuessResult } from "./types";
 type AttemptsSectionProps = {
   status: "authenticated" | "loading" | "unauthenticated";
   isLoadingAttempts: boolean;
+  displayHints: boolean;
   attempts: Array<{
     result: GuessResult;
     index: number;
@@ -14,6 +15,7 @@ type AttemptsSectionProps = {
 export function AttemptsSection({
   status,
   isLoadingAttempts,
+  displayHints,
   attempts,
 }: AttemptsSectionProps) {
   return (
@@ -38,13 +40,18 @@ export function AttemptsSection({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">{result.guess}</p>
                   <Badge variant={result.correct ? "secondary" : "destructive"}>
-                    {result.correct ? "Correct" : "Incorrect"}
+                    {result.correct ? "Accepted" : "Wrong Answer"}
                   </Badge>
                 </div>
                 <p className="mt-2 text-sm text-stone-600">
                   Closeness score:{" "}
                   <span className="font-semibold">{result.score}</span>/100
                 </p>
+                {displayHints && !result.correct && result.reason ? (
+                  <p className="mt-2 text-sm text-stone-700">
+                    Hint: <span className="text-stone-600">{result.reason}</span>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

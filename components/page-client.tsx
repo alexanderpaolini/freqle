@@ -11,6 +11,7 @@ import {
   getDateKey,
 } from "@/components/home-client-utils";
 import { useAccountSettings } from "@/components/hooks/use-account-settings";
+import { useFriendsResults } from "@/components/hooks/use-friends-results";
 import { useGameAttempts } from "@/components/hooks/use-game-attempts";
 import { usePuzzleStats } from "@/components/hooks/use-puzzle-stats";
 import { useShareFlow } from "@/components/hooks/use-share-flow";
@@ -85,6 +86,8 @@ export function PageClient({
     setIsSettingsOpen,
     settingsName,
     setSettingsName,
+    displayHints,
+    setDisplayHints,
     isLoadingAccount,
     isSavingSettings,
     isDeletingAccount,
@@ -107,6 +110,11 @@ export function PageClient({
       dateKey,
       refreshToken: isSolvedModalOpen,
     });
+  const { friendsResults, isLoadingFriendsResults } = useFriendsResults({
+    dateKey,
+    status,
+    isOpen: isSolvedModalOpen,
+  });
 
   function onSubmitGuess(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,6 +145,7 @@ export function PageClient({
           shownUsername={shownUsername}
           isSettingsOpen={isSettingsOpen}
           settingsName={settingsName}
+          displayHints={displayHints}
           friendId={friendId}
           isLoadingAccount={isLoadingAccount}
           isSavingSettings={isSavingSettings}
@@ -158,6 +167,7 @@ export function PageClient({
           }}
           onSettingsOpenChange={setIsSettingsOpen}
           onSettingsNameChange={setSettingsName}
+          onDisplayHintsChange={setDisplayHints}
           onSaveSettings={(event) => {
             void saveSettings(event);
           }}
@@ -173,6 +183,7 @@ export function PageClient({
         <AttemptsSection
           status={status}
           isLoadingAttempts={isLoadingAttempts}
+          displayHints={displayHints}
           attempts={attemptsForDisplay}
         />
 
@@ -188,6 +199,8 @@ export function PageClient({
         distribution={distribution}
         maxDistributionCount={maxDistributionCount}
         status={status}
+        friendsResults={friendsResults}
+        isLoadingFriendsResults={isLoadingFriendsResults}
         isGeneratingShare={isGeneratingShare}
         shareUrl={shareUrl}
         onClose={() => setIsSolvedModalOpen(false)}

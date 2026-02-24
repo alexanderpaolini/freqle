@@ -195,6 +195,7 @@ export function useGameAttempts({ dateKey, status }: UseGameAttemptsOptions) {
         error?: string;
         score?: number;
         correct?: boolean;
+        reason?: string;
       };
 
       if (!response.ok) {
@@ -209,6 +210,7 @@ export function useGameAttempts({ dateKey, status }: UseGameAttemptsOptions) {
           guess: trimmedGuess,
           score: typeof payload.score === "number" ? payload.score : 0,
           correct: solved,
+          reason: typeof payload.reason === "string" ? payload.reason : "",
         },
       ]);
       setGuess("");

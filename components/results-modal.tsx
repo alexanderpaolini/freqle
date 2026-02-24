@@ -1,7 +1,13 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
-import type { DistributionBucket, PuzzleStats } from "./types";
+import type {
+  DistributionBucket,
+  FriendResult,
+  FriendResultStatus,
+  PuzzleStats,
+} from "./types";
 import { DialogTitle } from "@radix-ui/react-dialog";
 
 type ResultsModalProps = {
@@ -13,6 +19,8 @@ type ResultsModalProps = {
   distribution: DistributionBucket[];
   maxDistributionCount: number;
   status: "authenticated" | "loading" | "unauthenticated";
+  friendsResults: FriendResult[];
+  isLoadingFriendsResults: boolean;
   isGeneratingShare: boolean;
   shareUrl: string;
   onClose: () => void;
@@ -29,6 +37,8 @@ export function ResultsModal({
   distribution,
   maxDistributionCount,
   status,
+  friendsResults,
+  isLoadingFriendsResults,
   isGeneratingShare,
   shareUrl,
   onClose,
@@ -110,6 +120,44 @@ export function ResultsModal({
           </CardContent>
         </Card>
 
+        <Card className="border-stone-300 bg-white">
+          <CardContent>
+            <p className="text-sm font-semibold">Friends</p>
+            {status !== "authenticated" ? (
+              <p className="mt-2 text-sm text-stone-500">
+                Sign in to see friends&apos; results.
+              </p>
+            ) : isLoadingFriendsResults ? (
+              <p className="mt-2 text-sm text-stone-500">Loading friends...</p>
+            ) : friendsResults.length === 0 ? (
+              <p className="mt-2 text-sm text-stone-500">
+                No friends added yet.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {friendsResults.map((entry) => (
+                  <li
+                    key={`${entry.friendId}-${entry.displayName}`}
+                    className="rounded-lg border border-stone-200 bg-stone-50 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-stone-900">
+                        {entry.displayName}
+                      </p>
+                      <Badge variant={getFriendBadgeVariant(entry.status)}>
+                        {getFriendStatusLabel(entry.status)}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {formatFriendDetail(entry)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {status === "authenticated" ? (
             <Button
@@ -156,4 +204,45 @@ function formatStatValue(value: number | null | undefined): string {
     return "-";
   }
   return String(value);
+}
+
+function getFriendStatusLabel(status: FriendResultStatus): string {
+  switch (status) {
+    case "solved":
+      return "Solved";
+    case "gave_up":
+      return "Gave up";
+    case "in_progress":
+      return "In progress";
+    default:
+      return "No result";
+  }
+}
+
+function getFriendBadgeVariant(
+  status: FriendResultStatus,
+): "secondary" | "destructive" | "outline" {
+  if (status === "solved") {
+    return "secondary";
+  }
+  if (status === "gave_up") {
+    return "destructive";
+  }
+  return "outline";
+}
+
+function formatFriendDetail(entry: FriendResult): string {
+  if (entry.status === "solved") {
+    return `Solved in ${entry.tries} ${entry.tries === 1 ? "attempt" : "attempts"}.`;
+  }
+
+  if (entry.status === "gave_up") {
+    return `Gave up after ${entry.tries} ${entry.tries === 1 ? "attempt" : "attempts"}.`;
+  }
+
+  if (entry.status === "in_progress") {
+    return `${entry.tries} ${entry.tries === 1 ? "guess" : "guesses"} so far.`;
+  }
+
+  return "No result yet.";
 }

@@ -11,6 +11,7 @@ type GamePanelProps = {
   shownUsername: string;
   isSettingsOpen: boolean;
   settingsName: string;
+  displayHints: boolean;
   friendId: string | null;
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
@@ -28,6 +29,7 @@ type GamePanelProps = {
   onSignOut: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onSettingsNameChange: (value: string) => void;
+  onDisplayHintsChange: (value: boolean) => void;
   onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteAccount: () => void;
   onGuessChange: (value: string) => void;
@@ -41,6 +43,7 @@ export function GamePanel({
   shownUsername,
   isSettingsOpen,
   settingsName,
+  displayHints,
   friendId,
   isLoadingAccount,
   isSavingSettings,
@@ -58,6 +61,7 @@ export function GamePanel({
   onSignOut,
   onSettingsOpenChange,
   onSettingsNameChange,
+  onDisplayHintsChange,
   onSaveSettings,
   onDeleteAccount,
   onGuessChange,
@@ -73,6 +77,7 @@ export function GamePanel({
           shownUsername={shownUsername}
           isSettingsOpen={isSettingsOpen}
           settingsName={settingsName}
+          displayHints={displayHints}
           friendId={friendId}
           isLoadingAccount={isLoadingAccount}
           isSavingSettings={isSavingSettings}
@@ -81,6 +86,7 @@ export function GamePanel({
           onSignOut={onSignOut}
           onSettingsOpenChange={onSettingsOpenChange}
           onSettingsNameChange={onSettingsNameChange}
+          onDisplayHintsChange={onDisplayHintsChange}
           onSaveSettings={onSaveSettings}
           onDeleteAccount={onDeleteAccount}
         />

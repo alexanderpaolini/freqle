@@ -6,6 +6,7 @@ import { ensurePlayerFriendId } from "@/lib/friends";
 
 type UpdateAccountBody = {
   displayName?: unknown;
+  displayHints?: unknown;
 };
 
 const MAX_USERNAME_LENGTH = 40;
@@ -32,6 +33,7 @@ export async function GET() {
   return NextResponse.json({
     displayName: player.displayName ?? session.user.name ?? "player",
     friendId,
+    displayHints: player.displayHints,
   });
 }
 
@@ -51,19 +53,31 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const displayName =
-    typeof body.displayName === "string" ? body.displayName.trim() : "";
+  const rawDisplayName = body.displayName;
+  const hasDisplayName = typeof rawDisplayName === "string";
+  const displayName = hasDisplayName ? rawDisplayName.trim() : "";
+  const rawDisplayHints = body.displayHints;
+  const displayHints =
+    typeof rawDisplayHints === "boolean" ? rawDisplayHints : undefined;
+  const hasDisplayHints = typeof displayHints === "boolean";
 
-  if (!displayName) {
+  if (hasDisplayName && !displayName) {
     return NextResponse.json(
       { error: "Username cannot be empty." },
       { status: 400 },
     );
   }
 
-  if (displayName.length > MAX_USERNAME_LENGTH) {
+  if (hasDisplayName && displayName.length > MAX_USERNAME_LENGTH) {
     return NextResponse.json(
       { error: `Username must be ${MAX_USERNAME_LENGTH} characters or fewer.` },
+      { status: 400 },
+    );
+  }
+
+  if (!hasDisplayName && !hasDisplayHints) {
+    return NextResponse.json(
+      { error: "No account setting changes provided." },
       { status: 400 },
     );
   }
@@ -74,18 +88,23 @@ export async function PATCH(request: Request) {
     },
     create: {
       externalId: session.user.id,
-      displayName,
+      displayName: hasDisplayName ? displayName : session.user.name ?? null,
+      displayHints: hasDisplayHints ? displayHints : false,
     },
     update: {
-      displayName,
+      ...(hasDisplayName ? { displayName } : {}),
+      ...(hasDisplayHints ? { displayHints } : {}),
     },
   });
 
   const friendId = player.friendCode ?? (await ensurePlayerFriendId(player.id));
 
   return NextResponse.json({
-    displayName: player.displayName ?? displayName,
+    displayName:
+      player.displayName ??
+      (hasDisplayName ? displayName : session.user.name ?? "player"),
     friendId,
+    displayHints: player.displayHints,
   });
 }
 

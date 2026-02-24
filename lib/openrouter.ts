@@ -57,10 +57,12 @@ export async function scoreGuessWithOpenRouter({
               "- score: integer between 0 and 100.",
               '- verdict: "correct" if it matches; otherwise "incorrect".',
               '- If verdict is "correct", score must be >=90.',
-              "- reason: one short sentence explaining the judgment.",
-              "- be more lenient than not",
+              "- be more lenient than not on scoring",
+              "- hint: one short nudge for the next guess",
+              "- The hint must never include the exact answer, accepted alternate answers, or obvious paraphrases.",
+              "- The hint should be vaguely directional (category, scale, trend, or relation), not a giveaway.",
               "Return JSON with this exact schema and no extra fields:",
-              '{"score": number, "verdict": "correct" | "incorrect", "reason": string }',
+              '{"score": number, "verdict": "correct" | "incorrect", "hint": string }',
             ].join("\n"),
           },
         ],
@@ -77,11 +79,12 @@ export async function scoreGuessWithOpenRouter({
   const content = extractContent(payload);
   const parsed = parseJsonObject(content);
 
+  console.log(parsed);
+
   if (
     !parsed ||
     typeof parsed.score !== "number" ||
-    (parsed.verdict !== "correct" && parsed.verdict !== "incorrect") ||
-    typeof parsed.reason !== "string"
+    (parsed.verdict !== "correct" && parsed.verdict !== "incorrect")
   ) {
     throw new Error("Malformed OpenRouter JSON payload");
   }
@@ -89,13 +92,18 @@ export async function scoreGuessWithOpenRouter({
   const verdict = parsed.verdict;
   const score =
     verdict === "correct" ? 100 : clamp(Math.round(parsed.score), 0, 99);
-  const reason = parsed.reason.trim();
+  const hint =
+    typeof parsed.hint === "string"
+      ? parsed.hint.trim()
+      : typeof parsed.reason === "string"
+        ? parsed.reason.trim()
+        : "";
 
-  if (!reason) {
+  if (!hint) {
     throw new Error("Malformed OpenRouter JSON payload");
   }
 
-  return { score, verdict, reason };
+  return { score, verdict, reason: hint };
 }
 
 function extractContent(payload: unknown): string {
@@ -129,6 +137,7 @@ function extractContent(payload: unknown): string {
 function parseJsonObject(text: string): {
   score?: number;
   verdict?: unknown;
+  hint?: unknown;
   reason?: unknown;
 } | null {
   if (!text.trim()) {
@@ -146,8 +155,12 @@ function parseJsonObject(text: string): {
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
-    console.log(parsed);
-    return parsed as { score?: number };
+    return parsed as {
+      score?: number;
+      verdict?: unknown;
+      hint?: unknown;
+      reason?: unknown;
+    };
   } catch {
     return null;
   }
