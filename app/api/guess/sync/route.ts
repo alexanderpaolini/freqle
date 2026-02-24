@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { parseAttemptGuesses, toAttemptGuessesJson } from "@/lib/attempts";
+import {
+  parseAttemptGuesses,
+  toAttemptGuessesJson,
+  type AttemptGuess,
+} from "@/lib/attempts";
 import { db } from "@/lib/db";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
 import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
@@ -9,6 +13,27 @@ import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 type SyncBody = {
   dateKey?: unknown;
   guesses?: unknown;
+  anonymousId?: unknown;
+};
+
+const attemptSelect = {
+  id: true,
+  playerId: true,
+  anonymousId: true,
+  solved: true,
+  gaveUp: true,
+  solvedIn: true,
+  guesses: true,
+} as const;
+
+type AttemptRecord = {
+  id: string;
+  playerId: string | null;
+  anonymousId: string | null;
+  solved: boolean;
+  gaveUp: boolean;
+  solvedIn: number | null;
+  guesses: unknown;
 };
 
 export async function POST(request: Request) {
@@ -33,6 +58,9 @@ export async function POST(request: Request) {
   const dateKey = sanitizeDateKey(
     typeof body.dateKey === "string" ? body.dateKey : null,
   );
+  const anonymousId = sanitizeAnonymousId(
+    typeof body.anonymousId === "string" ? body.anonymousId : null,
+  );
   const incomingGuesses = Array.isArray(body.guesses)
     ? body.guesses
         .filter((entry): entry is string => typeof entry === "string")
@@ -51,27 +79,38 @@ export async function POST(request: Request) {
     update: {},
   });
 
-  const attempt = await db.gameAttempt.upsert({
-    where: {
-      playerId_puzzleDate: {
+  const claimedAttempt = await claimAnonymousAttempt({
+    playerId: player.id,
+    puzzleDate: dateKey,
+    anonymousId,
+  });
+  if (!claimedAttempt && incomingGuesses.length === 0) {
+    return NextResponse.json({
+      results: [],
+      triesUsed: 0,
+      isSolved: false,
+      gaveUp: false,
+      noTriesLeft: false,
+    });
+  }
+
+  const attempt =
+    claimedAttempt ??
+    (await db.gameAttempt.upsert({
+      where: {
+        playerId_puzzleDate: {
+          playerId: player.id,
+          puzzleDate: dateKey,
+        },
+      },
+      create: {
         playerId: player.id,
         puzzleDate: dateKey,
+        guesses: toAttemptGuessesJson([]),
       },
-    },
-    create: {
-      playerId: player.id,
-      puzzleDate: dateKey,
-      guesses: toAttemptGuessesJson([]),
-    },
-    update: {},
-    select: {
-      id: true,
-      solved: true,
-      gaveUp: true,
-      solvedIn: true,
-      guesses: true,
-    },
-  });
+      update: {},
+      select: attemptSelect,
+    }));
 
   if (attempt.gaveUp) {
     const existingGuesses = parseAttemptGuesses(attempt.guesses);
@@ -161,4 +200,176 @@ function sanitizeDateKey(input: string | null): string {
   }
 
   return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : getDateKey();
+}
+
+function sanitizeAnonymousId(input: string | null): string | null {
+  if (!input) {
+    return null;
+  }
+
+  const normalized = input.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return /^[a-zA-Z0-9_-]{6,128}$/.test(normalized) ? normalized : null;
+}
+
+async function claimAnonymousAttempt(input: {
+  playerId: string;
+  puzzleDate: string;
+  anonymousId: string | null;
+}): Promise<AttemptRecord | null> {
+  const { playerId, puzzleDate, anonymousId } = input;
+  if (!anonymousId) {
+    return null;
+  }
+
+  const [playerAttempt, anonymousAttempt] = await Promise.all([
+    db.gameAttempt.findUnique({
+      where: {
+        playerId_puzzleDate: {
+          playerId,
+          puzzleDate,
+        },
+      },
+      select: attemptSelect,
+    }),
+    db.gameAttempt.findUnique({
+      where: {
+        anonymousId_puzzleDate: {
+          anonymousId,
+          puzzleDate,
+        },
+      },
+      select: attemptSelect,
+    }),
+  ]);
+
+  if (!anonymousAttempt) {
+    return playerAttempt;
+  }
+
+  if (anonymousAttempt.playerId === playerId) {
+    if (anonymousAttempt.anonymousId) {
+      return db.gameAttempt.update({
+        where: {
+          id: anonymousAttempt.id,
+        },
+        data: {
+          anonymousId: null,
+        },
+        select: attemptSelect,
+      });
+    }
+
+    return anonymousAttempt;
+  }
+
+  if (anonymousAttempt.playerId && anonymousAttempt.playerId !== playerId) {
+    return playerAttempt;
+  }
+
+  if (!playerAttempt) {
+    return db.gameAttempt.update({
+      where: {
+        id: anonymousAttempt.id,
+      },
+      data: {
+        playerId,
+        anonymousId: null,
+      },
+      select: attemptSelect,
+    });
+  }
+
+  const merged = mergeAttemptStates(playerAttempt, anonymousAttempt);
+  return db.$transaction(async (transaction) => {
+    const updatedPlayerAttempt = await transaction.gameAttempt.update({
+      where: {
+        id: playerAttempt.id,
+      },
+      data: {
+        guesses: toAttemptGuessesJson(merged.guesses),
+        solved: merged.solved,
+        gaveUp: merged.gaveUp,
+        solvedIn: merged.solved ? merged.solvedIn : null,
+      },
+      select: attemptSelect,
+    });
+
+    await transaction.gameAttempt.delete({
+      where: {
+        id: anonymousAttempt.id,
+      },
+    });
+
+    return updatedPlayerAttempt;
+  });
+}
+
+function mergeAttemptStates(
+  linkedAttempt: AttemptRecord,
+  anonymousAttempt: AttemptRecord,
+): {
+  guesses: AttemptGuess[];
+  solved: boolean;
+  gaveUp: boolean;
+  solvedIn: number | null;
+} {
+  const linkedGuesses = parseAttemptGuesses(linkedAttempt.guesses);
+  const anonymousGuesses = parseAttemptGuesses(anonymousAttempt.guesses);
+  const linkedSummary = summarizeAttempt(linkedAttempt, linkedGuesses);
+  const anonymousSummary = summarizeAttempt(anonymousAttempt, anonymousGuesses);
+
+  let selectedGuesses = linkedGuesses;
+  if (anonymousSummary.solved && !linkedSummary.solved) {
+    selectedGuesses = anonymousGuesses;
+  } else if (anonymousSummary.solved && linkedSummary.solved) {
+    const linkedSolvedIn = linkedSummary.solvedIn ?? Number.MAX_SAFE_INTEGER;
+    const anonymousSolvedIn =
+      anonymousSummary.solvedIn ?? Number.MAX_SAFE_INTEGER;
+    if (anonymousSolvedIn < linkedSolvedIn) {
+      selectedGuesses = anonymousGuesses;
+    }
+  } else if (
+    !linkedSummary.solved &&
+    !anonymousSummary.solved &&
+    anonymousGuesses.length > linkedGuesses.length
+  ) {
+    selectedGuesses = anonymousGuesses;
+  }
+
+  const solvedIndex = selectedGuesses.findIndex((entry) => entry.correct);
+  const solved = linkedSummary.solved || anonymousSummary.solved;
+  const solvedIn = solved
+    ? solvedIndex >= 0
+      ? solvedIndex + 1
+      : linkedSummary.solvedIn ?? anonymousSummary.solvedIn ?? null
+    : null;
+  const gaveUp = solved ? false : linkedSummary.gaveUp || anonymousSummary.gaveUp;
+
+  return {
+    guesses: selectedGuesses,
+    solved,
+    gaveUp,
+    solvedIn,
+  };
+}
+
+function summarizeAttempt(attempt: AttemptRecord, guesses: AttemptGuess[]) {
+  const solvedIndex = guesses.findIndex((entry) => entry.correct);
+  const solvedFromGuesses = solvedIndex >= 0;
+  const solved = attempt.solved || solvedFromGuesses;
+  const solvedIn = solved
+    ? solvedIndex >= 0
+      ? solvedIndex + 1
+      : attempt.solvedIn
+    : null;
+
+  return {
+    solved,
+    solvedIn,
+    gaveUp: attempt.gaveUp,
+  };
 }

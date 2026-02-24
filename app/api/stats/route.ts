@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getDateKey } from "@/lib/puzzles";
+import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const dateKey = sanitizeDateKey(url.searchParams.get("dateKey"));
+  const targetPuzzleId = getDailyPuzzleFromDateKey(dateKey).id;
 
   const solvedAttempts = await db.gameAttempt.findMany({
     where: {
-      puzzleDate: dateKey,
       solved: true,
       solvedIn: {
         not: null,
       },
     },
     select: {
+      puzzleDate: true,
       solvedIn: true,
     },
   });
 
   const solvedInValues = solvedAttempts
+    .filter(
+      (entry) => getDailyPuzzleFromDateKey(entry.puzzleDate).id === targetPuzzleId,
+    )
     .map((entry) => entry.solvedIn)
     .filter((value): value is number => typeof value === "number")
     .filter((value) => value >= 1);

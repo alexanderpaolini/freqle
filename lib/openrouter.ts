@@ -44,8 +44,7 @@ export async function scoreGuessWithOpenRouter({
         messages: [
           {
             role: "system",
-            content:
-              "You are a strict puzzle judge. Return valid JSON only.",
+            content: "You are a strict puzzle judge. Return valid JSON only.",
           },
           {
             role: "user",
@@ -55,10 +54,11 @@ export async function scoreGuessWithOpenRouter({
               `Accepted alternate answers: ${puzzle.acceptedAnswers.join(", ")}`,
               `User guess: "${guess}"`,
               "Rules:",
-              '- score: integer between 0 and 100.',
+              "- score: integer between 0 and 100.",
               '- verdict: "correct" if it matches; otherwise "incorrect".',
-              '- If verdict is "correct", score must be 100.',
-              '- reason: one short sentence explaining the judgment.',
+              '- If verdict is "correct", score must be >=90.',
+              "- reason: one short sentence explaining the judgment.",
+              "- be more lenient than not",
               "Return JSON with this exact schema and no extra fields:",
               '{"score": number, "verdict": "correct" | "incorrect", "reason": string }',
             ].join("\n"),
@@ -88,9 +88,7 @@ export async function scoreGuessWithOpenRouter({
 
   const verdict = parsed.verdict;
   const score =
-    verdict === "correct"
-      ? 100
-      : clamp(Math.round(parsed.score), 0, 99);
+    verdict === "correct" ? 100 : clamp(Math.round(parsed.score), 0, 99);
   const reason = parsed.reason.trim();
 
   if (!reason) {
@@ -148,6 +146,7 @@ function parseJsonObject(text: string): {
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
+    console.log(parsed);
     return parsed as { score?: number };
   } catch {
     return null;

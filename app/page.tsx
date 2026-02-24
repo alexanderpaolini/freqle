@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { parseAttemptGuesses } from "@/lib/attempts";
 import { db } from "@/lib/db";
-import { getDailyPuzzle, getPuzzlePreviewEntries } from "@/lib/puzzles";
+import {
+  getDailyPuzzle,
+  getDateKey,
+  getPuzzlePreviewEntries,
+} from "@/lib/puzzles";
 import { normalizeShareCode } from "@/lib/share";
 import { HomeClient } from "./home-client";
 
@@ -41,10 +45,10 @@ export async function generateMetadata({
     ? sharedSummary.tries > 0
       ? `${sharedSummary.ownerName} gave up on freqle after ${sharedSummary.tries} ${attemptsLabel}`
       : `${sharedSummary.ownerName} gave up on freqle`
-    : `${sharedSummary.ownerName} solved freqle in ${sharedSummary.tries} tries`;
+    : `${sharedSummary.ownerName} solved ${sharedSummary.dateKey == getDateKey() ? "todays" : ""} freqle in ${sharedSummary.tries} tries`;
   const description = sharedSummary.gaveUp
-    ? `Puzzle date: ${sharedSummary.dateKey}. Can you solve it?`
-    : `Puzzle date: ${sharedSummary.dateKey}. Can you beat that score?`;
+    ? `Can you solve it?`
+    : `Can you beat that score?`;
   const siteUrl = process.env.NEXTAUTH_URL ?? FALLBACK_SITE_URL;
   const url = `${siteUrl}/?share=${shareId}`;
 
@@ -105,7 +109,7 @@ async function getSharedSummary(
   }
 
   return {
-    ownerName: sharedAttempt.player.displayName ?? "A player",
+    ownerName: sharedAttempt.player?.displayName ?? "A player",
     tries,
     dateKey: sharedAttempt.puzzleDate,
     gaveUp: sharedAttempt.gaveUp,

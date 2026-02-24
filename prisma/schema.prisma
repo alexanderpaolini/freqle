@@ -18,20 +18,23 @@ model Player {
 }
 
 model GameAttempt {
-  id         String   @id @default(cuid())
-  playerId   String
-  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  puzzleDate String
-  solved     Boolean  @default(false)
-  gaveUp     Boolean  @default(false)
-  solvedIn   Int?
-  guesses    Json     @default("[]")
-  shareCode  String?  @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  playerId    String?
+  player      Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  anonymousId String?
+  puzzleDate  String
+  solved      Boolean  @default(false)
+  gaveUp      Boolean  @default(false)
+  solvedIn    Int?
+  guesses     Json     @default("[]")
+  shareCode   String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([playerId, puzzleDate])
+  @@unique([anonymousId, puzzleDate])
   @@index([puzzleDate])
+  @@index([anonymousId])
 }
 
 model Friendship {

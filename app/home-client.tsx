@@ -16,6 +16,7 @@ import type {
 const DEFAULT_DISTRIBUTION_BUCKETS = 6;
 const PENDING_SHARE_STORAGE_KEY = "freqle:pending-share-id";
 const OPEN_RESULTS_AFTER_AUTH_STORAGE_KEY = "freqle:open-results-after-auth";
+const ANONYMOUS_ID_STORAGE_KEY = "freqle:anonymous-id";
 const SHARE_REQUEST_TIMEOUT_MS = 12000;
 
 type HomeClientProps = {
@@ -84,6 +85,7 @@ export function HomeClient({
     }
 
     setHasLoadedLocal(false);
+    getOrCreateAnonymousId();
     const localResults = readAttemptFromStorage(dateKey);
     setResults(localResults);
     setHasGivenUp(false);
@@ -347,7 +349,8 @@ export function HomeClient({
 
       try {
         const localResults = readAttemptFromStorage(dateKey);
-        if (localResults.length > 0) {
+        const anonymousId = readAnonymousIdFromStorage();
+        if (localResults.length > 0 || anonymousId) {
           const syncResponse = await fetch("/api/guess/sync", {
             method: "POST",
             headers: {
@@ -356,6 +359,7 @@ export function HomeClient({
             body: JSON.stringify({
               dateKey,
               guesses: localResults.map((entry) => entry.guess),
+              anonymousId,
             }),
             signal: controller.signal,
           });
@@ -367,6 +371,7 @@ export function HomeClient({
             toast.error(syncPayload.error ?? "Could not sync local attempts.");
           } else {
             clearAttemptFromStorage(dateKey);
+            clearAnonymousIdFromStorage();
           }
         }
 
@@ -479,6 +484,13 @@ export function HomeClient({
     setIsSubmitting(true);
 
     try {
+      const anonymousId =
+        status === "authenticated" ? null : getOrCreateAnonymousId();
+      if (status !== "authenticated" && !anonymousId) {
+        toast.error("Could not initialize anonymous session.");
+        return;
+      }
+
       const response = await fetch("/api/guess", {
         method: "POST",
         headers: {
@@ -487,6 +499,7 @@ export function HomeClient({
         body: JSON.stringify({
           guess: guess.trim(),
           dateKey,
+          anonymousId,
         }),
       });
 
@@ -563,7 +576,9 @@ export function HomeClient({
 
       setHasGivenUp(payload.gaveUp === true);
       setRevealedAnswer(
-        typeof payload.revealedAnswer === "string" ? payload.revealedAnswer : null,
+        typeof payload.revealedAnswer === "string"
+          ? payload.revealedAnswer
+          : null,
       );
       setIsSolvedModalOpen(false);
       setGeneratedShareId(null);
@@ -893,6 +908,50 @@ function getAttemptStorageKey(dateKey: string) {
   return `freqle:attempt:${dateKey}`;
 }
 
+function readAnonymousIdFromStorage(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = window.localStorage.getItem(ANONYMOUS_ID_STORAGE_KEY);
+  if (!value) {
+    return null;
+  }
+
+  return value.trim() || null;
+}
+
+function getOrCreateAnonymousId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const existing = readAnonymousIdFromStorage();
+  if (existing) {
+    return existing;
+  }
+
+  const nextId = createAnonymousId();
+  window.localStorage.setItem(ANONYMOUS_ID_STORAGE_KEY, nextId);
+  return nextId;
+}
+
+function clearAnonymousIdFromStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(ANONYMOUS_ID_STORAGE_KEY);
+}
+
+function createAnonymousId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID().replace(/-/g, "");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+
 function readAttemptFromStorage(dateKey: string): GuessResult[] {
   if (typeof window === "undefined") {
     return [];
@@ -982,8 +1041,8 @@ function clearFreqleLocalState() {
 function isAbortError(value: unknown): boolean {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      "name" in value &&
-      value.name === "AbortError",
+    typeof value === "object" &&
+    "name" in value &&
+    value.name === "AbortError",
   );
 }

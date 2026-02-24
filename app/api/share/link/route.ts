@@ -59,6 +59,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!shareAttempt.player) {
+    return NextResponse.json(
+      { error: "This share link is not linked to a player yet." },
+      { status: 409 },
+    );
+  }
+
   if (shareAttempt.player.externalId === session.user.id) {
     return NextResponse.json({ linked: false });
   }

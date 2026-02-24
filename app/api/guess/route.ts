@@ -9,20 +9,56 @@ import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 type GuessBody = {
   guess?: unknown;
   dateKey?: unknown;
+  anonymousId?: unknown;
 };
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   const url = new URL(request.url);
   const dateKey = sanitizeDateKey(url.searchParams.get("dateKey"));
+  const anonymousId = sanitizeAnonymousId(url.searchParams.get("anonymousId"));
 
   if (!session?.user?.id) {
+    if (!anonymousId) {
+      return NextResponse.json({
+        results: [],
+        triesUsed: 0,
+        isSolved: false,
+        gaveUp: false,
+        revealedAnswer: null,
+        noTriesLeft: false,
+      });
+    }
+
+    const anonymousAttempt = await db.gameAttempt.findUnique({
+      where: {
+        anonymousId_puzzleDate: {
+          anonymousId,
+          puzzleDate: dateKey,
+        },
+      },
+      select: {
+        solved: true,
+        gaveUp: true,
+        guesses: true,
+      },
+    });
+
+    const results = anonymousAttempt
+      ? parseAttemptGuesses(anonymousAttempt.guesses)
+      : [];
+    const triesUsed = results.length;
+    const isSolved =
+      Boolean(anonymousAttempt?.solved) || results.some((entry) => entry.correct);
+    const gaveUp = Boolean(anonymousAttempt?.gaveUp);
+    const puzzle = getDailyPuzzleFromDateKey(dateKey);
+
     return NextResponse.json({
-      results: [],
-      triesUsed: 0,
-      isSolved: false,
-      gaveUp: false,
-      revealedAnswer: null,
+      results,
+      triesUsed,
+      isSolved,
+      gaveUp,
+      revealedAnswer: gaveUp ? puzzle.solutionLabel : null,
       noTriesLeft: false,
     });
   }
@@ -75,6 +111,9 @@ export async function POST(request: Request) {
   const dateKey = sanitizeDateKey(
     typeof body.dateKey === "string" ? body.dateKey : null,
   );
+  const anonymousId = sanitizeAnonymousId(
+    typeof body.anonymousId === "string" ? body.anonymousId : null,
+  );
 
   if (!guess) {
     return NextResponse.json({ error: "Guess is required." }, { status: 400 });
@@ -82,16 +121,84 @@ export async function POST(request: Request) {
 
   const puzzle = getDailyPuzzleFromDateKey(dateKey);
   if (!session?.user?.id) {
+    if (!anonymousId) {
+      return NextResponse.json(
+        { error: "anonymousId is required for anonymous guesses." },
+        { status: 400 },
+      );
+    }
+
+    const attempt = await db.gameAttempt.upsert({
+      where: {
+        anonymousId_puzzleDate: {
+          anonymousId,
+          puzzleDate: dateKey,
+        },
+      },
+      create: {
+        anonymousId,
+        puzzleDate: dateKey,
+        guesses: toAttemptGuessesJson([]),
+      },
+      update: {},
+      select: {
+        id: true,
+        solved: true,
+        gaveUp: true,
+        guesses: true,
+      },
+    });
+
+    const existingResults = parseAttemptGuesses(attempt.guesses);
+    if (attempt.gaveUp) {
+      return NextResponse.json(
+        { error: "You already gave up today's puzzle." },
+        { status: 409 },
+      );
+    }
+
+    if (attempt.solved || existingResults.some((entry) => entry.correct)) {
+      return NextResponse.json(
+        { error: "You already solved today's puzzle." },
+        { status: 409 },
+      );
+    }
+
     try {
       const judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
       const correct = judgment.verdict === "correct";
+      const nextResults = [
+        ...existingResults,
+        {
+          guess,
+          score: judgment.score,
+          verdict: judgment.verdict,
+          reason: judgment.reason,
+          correct,
+        },
+      ];
+      const triesUsed = nextResults.length;
+
+      await db.gameAttempt.update({
+        where: {
+          id: attempt.id,
+        },
+        data: {
+          guesses: toAttemptGuessesJson(nextResults),
+          gaveUp: false,
+          solved: correct,
+          solvedIn: correct ? triesUsed : null,
+        },
+      });
+
       return NextResponse.json({
         correct,
         score: judgment.score,
         verdict: judgment.verdict,
         reason: judgment.reason,
+        triesUsed,
         gaveUp: false,
-        saved: false,
+        saved: true,
       });
     } catch {
       return NextResponse.json(
@@ -203,4 +310,17 @@ function sanitizeDateKey(input: string | null): string {
   }
 
   return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : getDateKey();
+}
+
+function sanitizeAnonymousId(input: string | null): string | null {
+  if (!input) {
+    return null;
+  }
+
+  const normalized = input.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return /^[a-zA-Z0-9_-]{6,128}$/.test(normalized) ? normalized : null;
 }

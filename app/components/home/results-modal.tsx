@@ -67,7 +67,8 @@ export function ResultsModal({
             </Button>
           </div>
         </DialogHeader>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+
+        <div className="grid grid-cols-3 gap-2 text-sm">
           <StatCard
             label="Total Solves"
             value={String(stats?.totalSolves ?? 0)}
@@ -76,8 +77,8 @@ export function ResultsModal({
           <StatCard label="Median" value={formatStatValue(stats?.median)} />
         </div>
 
-        <Card className="mt-4 border-stone-300 bg-white">
-          <CardContent className="p-4">
+        <Card className="border-stone-300 bg-white">
+          <CardContent>
             <p className="text-sm font-semibold">Distribution</p>
             {isLoadingStats ? (
               <p className="mt-2 text-sm text-stone-500">Loading chart...</p>
@@ -142,7 +143,7 @@ type StatCardProps = {
 function StatCard({ label, value }: StatCardProps) {
   return (
     <Card className="rounded-xl border-stone-300 bg-white">
-      <CardContent className="px-3 py-2">
+      <CardContent className="px-3">
         <p className="text-xs text-stone-500">{label}</p>
         <p className="mt-1 text-lg font-semibold">{value}</p>
       </CardContent>
