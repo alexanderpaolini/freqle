@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
+import { getDateKey, getRequiredPuzzleFromDateKey } from "@/lib/puzzles";
 
 type CreateSuggestionBody = {
   text?: unknown;
@@ -62,7 +62,16 @@ export async function POST(request: Request) {
     playerId = player.id;
   }
 
-  const puzzleId = getDailyPuzzleFromDateKey(dateKey).id;
+  let puzzleId: string;
+  try {
+    const puzzle = await getRequiredPuzzleFromDateKey(dateKey);
+    puzzleId = puzzle.id;
+  } catch {
+    return NextResponse.json(
+      { error: "No puzzle is configured for that date yet." },
+      { status: 503 },
+    );
+  }
   await db.suggestion.create({
     data: {
       playerId,

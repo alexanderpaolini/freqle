@@ -11,6 +11,7 @@ type GamePanelProps = {
   shownUsername: string;
   isSettingsOpen: boolean;
   settingsName: string;
+  friendId: string | null;
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
   isDeletingAccount: boolean;
@@ -40,6 +41,7 @@ export function GamePanel({
   shownUsername,
   isSettingsOpen,
   settingsName,
+  friendId,
   isLoadingAccount,
   isSavingSettings,
   isDeletingAccount,
@@ -71,6 +73,7 @@ export function GamePanel({
           shownUsername={shownUsername}
           isSettingsOpen={isSettingsOpen}
           settingsName={settingsName}
+          friendId={friendId}
           isLoadingAccount={isLoadingAccount}
           isSavingSettings={isSavingSettings}
           isDeletingAccount={isDeletingAccount}

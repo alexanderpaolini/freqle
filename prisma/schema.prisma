@@ -9,6 +9,7 @@ datasource db {
 model Player {
   id             String       @id @default(cuid())
   externalId     String       @unique
+  friendCode     String?      @unique
   displayName    String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -16,6 +17,27 @@ model Player {
   suggestions    Suggestion[]
   friendshipsOut Friendship[] @relation("FriendshipsOut")
   friendshipsIn  Friendship[] @relation("FriendshipsIn")
+}
+
+model Puzzle {
+  id              String       @id
+  preview         Json
+  solutionLabel   String
+  answer          String
+  acceptedAnswers String[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  dailyPuzzles    DailyPuzzle[]
+}
+
+model DailyPuzzle {
+  dateKey   String   @id
+  puzzleId  String
+  puzzle    Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([puzzleId])
 }
 
 model GameAttempt {

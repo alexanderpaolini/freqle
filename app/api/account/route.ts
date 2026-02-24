@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensurePlayerFriendId } from "@/lib/friends";
 
 type UpdateAccountBody = {
   displayName?: unknown;
@@ -26,8 +27,11 @@ export async function GET() {
     update: {},
   });
 
+  const friendId = player.friendCode ?? (await ensurePlayerFriendId(player.id));
+
   return NextResponse.json({
     displayName: player.displayName ?? session.user.name ?? "player",
+    friendId,
   });
 }
 
@@ -77,7 +81,12 @@ export async function PATCH(request: Request) {
     },
   });
 
-  return NextResponse.json({ displayName: player.displayName ?? displayName });
+  const friendId = player.friendCode ?? (await ensurePlayerFriendId(player.id));
+
+  return NextResponse.json({
+    displayName: player.displayName ?? displayName,
+    friendId,
+  });
 }
 
 export async function DELETE() {

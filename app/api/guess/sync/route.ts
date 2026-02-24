@@ -8,7 +8,11 @@ import {
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
-import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
+import {
+  getDateKey,
+  getRequiredPuzzleFromDateKey,
+  type Puzzle,
+} from "@/lib/puzzles";
 
 type SyncBody = {
   dateKey?: unknown;
@@ -136,7 +140,15 @@ export async function POST(request: Request) {
     });
   }
 
-  const puzzle = getDailyPuzzleFromDateKey(dateKey);
+  let puzzle: Puzzle;
+  try {
+    puzzle = await getRequiredPuzzleFromDateKey(dateKey);
+  } catch {
+    return NextResponse.json(
+      { error: "No puzzle is configured for that date yet." },
+      { status: 503 },
+    );
+  }
   let solved = attempt.solved || existingGuesses.some((entry) => entry.correct);
   const pendingGuesses = incomingGuesses.slice(existingGuesses.length);
   const nextGuesses = [...existingGuesses];

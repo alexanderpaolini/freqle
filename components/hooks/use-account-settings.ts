@@ -20,6 +20,7 @@ export function useAccountSettings({
 }: UseAccountSettingsOptions) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [accountName, setAccountName] = useState<string | null>(null);
+  const [friendId, setFriendId] = useState<string | null>(null);
   const [settingsName, setSettingsName] = useState("");
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -33,6 +34,7 @@ export function useAccountSettings({
   useEffect(() => {
     if (status !== "authenticated") {
       setAccountName(null);
+      setFriendId(null);
       setSettingsName("");
       setIsSettingsOpen(false);
       setIsLoadingAccount(false);
@@ -56,6 +58,7 @@ export function useAccountSettings({
         const payload = (await response.json()) as {
           error?: string;
           displayName?: string;
+          friendId?: string;
         };
 
         if (!response.ok) {
@@ -67,8 +70,13 @@ export function useAccountSettings({
           typeof payload.displayName === "string" && payload.displayName.trim()
             ? payload.displayName.trim()
             : fallbackName;
+        const loadedFriendId =
+          typeof payload.friendId === "string" && payload.friendId.trim()
+            ? payload.friendId.trim()
+            : null;
 
         setAccountName(loadedName);
+        setFriendId(loadedFriendId);
         setSettingsName(loadedName);
       } catch (caught) {
         if (isAbortError(caught)) {
@@ -116,6 +124,7 @@ export function useAccountSettings({
       const payload = (await response.json()) as {
         error?: string;
         displayName?: string;
+        friendId?: string;
       };
 
       if (!response.ok) {
@@ -127,8 +136,13 @@ export function useAccountSettings({
         typeof payload.displayName === "string" && payload.displayName.trim()
           ? payload.displayName.trim()
           : trimmedName;
+      const nextFriendId =
+        typeof payload.friendId === "string" && payload.friendId.trim()
+          ? payload.friendId.trim()
+          : null;
 
       setAccountName(nextName);
+      setFriendId(nextFriendId);
       setSettingsName(nextName);
       toast.success("Username updated.");
       setIsSettingsOpen(false);
@@ -165,6 +179,7 @@ export function useAccountSettings({
       }
 
       setAccountName(null);
+      setFriendId(null);
       setSettingsName("");
       setIsSettingsOpen(false);
 
@@ -180,6 +195,7 @@ export function useAccountSettings({
 
   return {
     shownUsername,
+    friendId,
     isSettingsOpen,
     setIsSettingsOpen,
     settingsName,

@@ -12,11 +12,7 @@ You are shown a hashmap preview:
 
 You must guess what real-world dataset that map represents.
 
-Current puzzle bank includes:
-
-- Number of days in each month (non leap year)
-- Number of letters in each weekday name
-- Number of letters in each planet name (Mercury to Neptune)
+Puzzles are stored in PostgreSQL and assigned to specific `YYYY-MM-DD` date keys.
 
 ## Features
 
@@ -29,7 +25,7 @@ Current puzzle bank includes:
 - OpenRouter-based closeness scoring for incorrect guesses
 - Custom 9-char share links on home route (example: `/?share=465r7tyig`) with social metadata and automatic friend-linking
 - Share support for both solved and gave-up results
-- Componentized home UI (`app/components/home/*`) for maintainable feature iteration
+- Componentized home UI (`components/*`) for maintainable feature iteration
 - Results center modal with avg/median + tries distribution chart and one-click `Share`
 
 ## Setup
@@ -73,7 +69,13 @@ Optional:
 pnpm db:push
 ```
 
-6. Run locally:
+6. Assign a puzzle to today (required before gameplay):
+
+```bash
+pnpm puzzle:upsert-day -- --date "$(date +%F)" --preset month-day-counts
+```
+
+7. Run locally:
 
 ```bash
 pnpm dev
@@ -94,6 +96,7 @@ pnpm format
 ```bash
 pnpm db:generate
 pnpm db:push
+pnpm puzzle:upsert-day -- --help
 ```
 
 ## Discord OAuth callback URL

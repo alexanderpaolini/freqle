@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
+import {
+  getDateKey,
+  getRequiredPuzzleFromDateKey,
+  type Puzzle,
+} from "@/lib/puzzles";
 
 type GiveUpBody = {
   dateKey?: unknown;
@@ -27,7 +31,15 @@ export async function POST(request: Request) {
   const dateKey = sanitizeDateKey(
     typeof body.dateKey === "string" ? body.dateKey : null,
   );
-  const puzzle = getDailyPuzzleFromDateKey(dateKey);
+  let puzzle: Puzzle;
+  try {
+    puzzle = await getRequiredPuzzleFromDateKey(dateKey);
+  } catch {
+    return NextResponse.json(
+      { error: "No puzzle is configured for that date yet." },
+      { status: 503 },
+    );
+  }
 
   const player = await db.player.upsert({
     where: {

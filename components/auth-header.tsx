@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { Cog } from "lucide-react";
+import { AddFriendDialog } from "./add-friend-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ type AuthHeaderProps = {
   shownUsername: string;
   isSettingsOpen: boolean;
   settingsName: string;
+  friendId: string | null;
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
   isDeletingAccount: boolean;
@@ -29,6 +31,7 @@ export function AuthHeader({
   shownUsername,
   isSettingsOpen,
   settingsName,
+  friendId,
   isLoadingAccount,
   isSavingSettings,
   isDeletingAccount,
@@ -52,6 +55,7 @@ export function AuthHeader({
         {status === "authenticated" ? (
           <>
             <p className="text-sm text-stone-600">@{shownUsername}</p>
+            <AddFriendDialog disabled={isLoadingAccount || isDeletingAccount} />
             <Button type="button" variant="outline" onClick={onSignOut}>
               Sign out
             </Button>
@@ -73,6 +77,7 @@ export function AuthHeader({
               <DropdownMenuContent align="end" className="w-72 p-0">
                 <SettingsPopover
                   settingsName={settingsName}
+                  friendId={friendId}
                   isLoadingAccount={isLoadingAccount}
                   isSavingSettings={isSavingSettings}
                   isDeletingAccount={isDeletingAccount}

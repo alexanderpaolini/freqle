@@ -1,3 +1,5 @@
+import { db } from "@/lib/db";
+
 export type Puzzle = {
   id: string;
   preview: Record<number, number>;
@@ -6,61 +8,13 @@ export type Puzzle = {
   acceptedAnswers: string[];
 };
 
-const PUZZLES: Puzzle[] = [
-  {
-    id: "month-day-counts",
-    preview: {
-      28: 1,
-      30: 4,
-      31: 7,
-    },
-    solutionLabel: "The number of days in each month (non leap year).",
-    answer: "the number of days in each month in a non leap year",
-    acceptedAnswers: [
-      "days in each month",
-      "number of days in each month",
-      "days per month",
-      "month lengths",
-      "month lengths in a non leap year",
-      "days in months non leap year",
-    ],
-  },
-  {
-    id: "weekday-name-lengths",
-    preview: {
-      6: 3,
-      7: 1,
-      8: 2,
-      9: 1,
-    },
-    solutionLabel: "The number of letters in each weekday name.",
-    answer: "the number of letters in each weekday name",
-    acceptedAnswers: [
-      "weekday name lengths",
-      "letters in weekday names",
-      "length of day names",
-      "day of week name lengths",
-    ],
-  },
-  {
-    id: "planet-name-lengths",
-    preview: {
-      4: 1,
-      5: 2,
-      6: 1,
-      7: 4,
-    },
-    solutionLabel:
-      "The number of letters in each planet name (Mercury to Neptune).",
-    answer: "the number of letters in each planet name",
-    acceptedAnswers: [
-      "planet name lengths",
-      "letters in planet names",
-      "solar system planet name lengths",
-      "length of planet names",
-    ],
-  },
-];
+const puzzleSelect = {
+  id: true,
+  preview: true,
+  solutionLabel: true,
+  answer: true,
+  acceptedAnswers: true,
+} as const;
 
 export function getDateKey(date = new Date()): string {
   const year = date.getFullYear();
@@ -69,41 +23,40 @@ export function getDateKey(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getDailyPuzzle(date = new Date()): Puzzle {
-  const dayNumber = Math.floor(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000,
-  );
-  const index =
-    ((dayNumber % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
-  return PUZZLES[index];
+export async function getDailyPuzzle(date = new Date()): Promise<Puzzle | null> {
+  return getDailyPuzzleFromDateKey(getDateKey(date));
 }
 
-export function getDailyPuzzleFromDateKey(dateKey?: string): Puzzle {
-  if (!dateKey) {
-    return getDailyPuzzle();
+export async function getDailyPuzzleFromDateKey(
+  dateKey?: string,
+): Promise<Puzzle | null> {
+  const normalizedDateKey = sanitizeDateKey(dateKey) ?? getDateKey();
+
+  const exact = await db.dailyPuzzle.findUnique({
+    where: {
+      dateKey: normalizedDateKey,
+    },
+    select: {
+      puzzle: {
+        select: puzzleSelect,
+      },
+    },
+  });
+
+  return parsePuzzle(exact?.puzzle);
+}
+
+export async function getRequiredPuzzleFromDateKey(
+  dateKey?: string,
+): Promise<Puzzle> {
+  const puzzle = await getDailyPuzzleFromDateKey(dateKey);
+  if (puzzle) {
+    return puzzle;
   }
 
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
-  if (!match) {
-    return getDailyPuzzle();
-  }
-
-  const [, year, month, day] = match;
-  const parsedDate = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    12,
-    0,
-    0,
-    0,
+  throw new Error(
+    "No puzzles are configured in the database. Run `pnpm puzzle:upsert-day -- --date YYYY-MM-DD --preset month-day-counts` first.",
   );
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return getDailyPuzzle();
-  }
-
-  return getDailyPuzzle(parsedDate);
 }
 
 export function getPuzzlePreviewEntries(
@@ -125,4 +78,88 @@ export function normalizeText(text: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function sanitizeDateKey(input?: string): string | null {
+  if (!input) {
+    return null;
+  }
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : null;
+}
+
+function parsePuzzle(
+  value:
+    | {
+        id: string;
+        preview: unknown;
+        solutionLabel: string;
+        answer: string;
+        acceptedAnswers: string[];
+      }
+    | null
+    | undefined,
+): Puzzle | null {
+  if (!value) {
+    return null;
+  }
+
+  const preview = parsePreview(value.preview);
+  if (!preview) {
+    return null;
+  }
+
+  const id = value.id.trim();
+  const solutionLabel = value.solutionLabel.trim();
+  const answer = value.answer.trim();
+  if (!id || !solutionLabel || !answer) {
+    return null;
+  }
+
+  const acceptedAnswers = Array.isArray(value.acceptedAnswers)
+    ? value.acceptedAnswers
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+
+  return {
+    id,
+    preview,
+    solutionLabel,
+    answer,
+    acceptedAnswers,
+  };
+}
+
+function parsePreview(value: unknown): Record<number, number> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const preview: Record<number, number> = {};
+  for (const [rawKey, rawCount] of entries) {
+    const key = Number(rawKey);
+    if (!Number.isFinite(key) || !Number.isInteger(key)) {
+      return null;
+    }
+
+    if (
+      typeof rawCount !== "number" ||
+      !Number.isFinite(rawCount) ||
+      !Number.isInteger(rawCount) ||
+      rawCount < 0
+    ) {
+      return null;
+    }
+
+    preview[key] = rawCount;
+  }
+
+  return preview;
 }
