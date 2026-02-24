@@ -160,10 +160,11 @@ On first run, initialize DB schema:
 docker compose run --rm app pnpm db:push
 ```
 
-Optional app env overrides use `APP_*` vars:
+Compose reads standard env keys from `.env` and also supports optional `APP_*` overrides:
 
 - `APP_NEXTAUTH_URL`
 - `APP_NEXTAUTH_SECRET`
+- `APP_DATABASE_URL`
 - `APP_DISCORD_CLIENT_ID`
 - `APP_DISCORD_CLIENT_SECRET`
 - `APP_OPENROUTER_API_KEY`
@@ -195,4 +196,3 @@ http://localhost:3000/api/auth/callback/discord
 ## Notes
 
 - `DATABASE_URL` must be a PostgreSQL connection string (for example `postgresql://...`), not `prisma+postgres://...`.
-
