@@ -1,0 +1,14 @@
+.git
+.gitignore
+.next
+node_modules
+coverage
+dist
+build
+out
+*.log
+.DS_Store
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local

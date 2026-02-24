@@ -5,9 +5,6 @@ import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma-client/index.js";
 
-const DEFAULT_CONNECTION_STRING =
-  "postgresql://freqle:freqle@localhost:5432/freqle?schema=public";
-
 const HELP_TEXT = `Usage:
   pnpm puzzle:upsert-day -- --date YYYY-MM-DD --file ./puzzle.json
   pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json '{"id":"...","preview":{"1":2},"solutionLabel":"...","answer":"...","acceptedAnswers":["..."]}'
@@ -35,8 +32,7 @@ async function main() {
   const parsedPuzzle = resolvePuzzleInput(args);
   const puzzle = normalizePuzzle(parsedPuzzle);
 
-  const connectionString =
-    process.env.DATABASE_URL ?? DEFAULT_CONNECTION_STRING;
+  const connectionString = process.env.DATABASE_URL;
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString }),
   });

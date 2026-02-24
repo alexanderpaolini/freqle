@@ -5,9 +5,9 @@ const globalForDb = globalThis as unknown as {
   db?: PrismaClient;
 };
 
-const connectionString =
-  process.env.DATABASE_URL ??
-  "postgresql://freqle:freqle@localhost:5432/freqle?schema=public";
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) throw new Error("BRO YOU NEED THIS")
 
 const adapter = new PrismaPg({ connectionString });
 

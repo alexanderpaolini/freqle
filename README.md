@@ -39,7 +39,7 @@ pnpm install
 2. Start PostgreSQL:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 3. Create your env file:
@@ -82,6 +82,27 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Docker (Production Mode)
+
+Build and run the app + Postgres in production mode:
+
+```bash
+docker compose up --build -d
+```
+
+Optional overrides for containerized app settings use `APP_*` env vars:
+
+- `APP_NEXTAUTH_URL`
+- `APP_NEXTAUTH_SECRET`
+- `APP_DISCORD_CLIENT_ID`
+- `APP_DISCORD_CLIENT_SECRET`
+- `APP_OPENROUTER_API_KEY`
+- `APP_OPENROUTER_MODEL`
+- `APP_OPENROUTER_SITE_URL`
+- `APP_OPENROUTER_APP_NAME`
+
+Then open [http://localhost:3000](http://localhost:3000).
 
 ## Formatting
 
