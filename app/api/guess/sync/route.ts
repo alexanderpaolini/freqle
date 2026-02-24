@@ -20,6 +20,11 @@ type SyncBody = {
   anonymousId?: unknown;
 };
 
+type DbTransactionClient = Omit<
+  typeof db,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
+>;
+
 type AttemptRecord = {
   id: string;
   playerId: string | null;
@@ -193,7 +198,7 @@ export async function POST(request: Request) {
     judgedGuesses.length > 0;
 
   if (shouldUpdateAttempt) {
-    await db.$transaction(async (transaction) => {
+    await db.$transaction(async (transaction: DbTransactionClient) => {
       if (judgedGuesses.length > 0) {
         await transaction.guess.createMany({
           data: judgedGuesses.map((entry, index) =>
@@ -324,7 +329,7 @@ async function claimAnonymousAttempt(input: {
     anonymousAttempt as AttemptRecord,
   );
 
-  return db.$transaction(async (transaction) => {
+  return db.$transaction(async (transaction: DbTransactionClient) => {
     await transaction.guess.deleteMany({
       where: {
         attemptId: playerAttempt.id,

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const puzzleDates = await db.dailyPuzzle.findMany({
+  const puzzleDates: Array<{ dateKey: string }> = await db.dailyPuzzle.findMany({
     where: {
       puzzleId: resolvedAssignment.puzzleId,
     },
@@ -26,20 +26,21 @@ export async function GET(request: Request) {
     },
   });
 
-  const solvedAttempts = await db.gameAttempt.findMany({
-    where: {
-      solved: true,
-      solvedIn: {
-        not: null,
+  const solvedAttempts: Array<{ solvedIn: number | null }> =
+    await db.gameAttempt.findMany({
+      where: {
+        solved: true,
+        solvedIn: {
+          not: null,
+        },
+        puzzleDate: {
+          in: puzzleDates.map((entry) => entry.dateKey),
+        },
       },
-      puzzleDate: {
-        in: puzzleDates.map((entry) => entry.dateKey),
+      select: {
+        solvedIn: true,
       },
-    },
-    select: {
-      solvedIn: true,
-    },
-  });
+    });
 
   const solvedInValues = solvedAttempts
     .map((entry) => entry.solvedIn)

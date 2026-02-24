@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma-client/index.js";
 
 const DEFAULT_CONNECTION_STRING =
   "postgresql://freqle:freqle@localhost:5432/freqle?schema=public";

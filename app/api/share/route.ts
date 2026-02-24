@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -173,10 +172,7 @@ async function assignShareCode(attemptId: string): Promise<string | null> {
       });
       return normalizeShareCode(updated.shareCode);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
+      if (isUniqueConstraintError(error)) {
         continue;
       }
       throw error;
@@ -184,4 +180,13 @@ async function assignShareCode(attemptId: string): Promise<string | null> {
   }
 
   return null;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002",
+  );
 }

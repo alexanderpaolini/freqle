@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "pnpm db:generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

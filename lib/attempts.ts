@@ -1,4 +1,3 @@
-import type { Guess as PrismaGuess } from "@prisma/client";
 import type { JudgeVerdict } from "@/lib/openrouter";
 
 export type AttemptGuess = {
@@ -17,10 +16,14 @@ type GuessLike = {
   correct: unknown;
 };
 
-export type GuessRow = Pick<
-  PrismaGuess,
-  "guess" | "score" | "verdict" | "reason" | "correct" | "position"
->;
+export type GuessRow = {
+  guess: string;
+  score: number;
+  verdict: string;
+  reason: string;
+  correct: boolean;
+  position: number;
+};
 
 export function parseAttemptGuesses(value: unknown): AttemptGuess[] {
   if (!Array.isArray(value)) {

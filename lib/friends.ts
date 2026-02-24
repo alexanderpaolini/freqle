@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 const FRIEND_ID_LENGTH = 9;
@@ -53,10 +52,7 @@ export async function ensurePlayerFriendId(playerId: string): Promise<string> {
         return updated.friendCode;
       }
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
+      if (isUniqueConstraintError(error)) {
         continue;
       }
 
@@ -75,4 +71,13 @@ function generateFriendId(length = FRIEND_ID_LENGTH): string {
   }
 
   return id;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002",
+  );
 }
