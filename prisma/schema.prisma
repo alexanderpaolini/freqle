@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Player {
+  id             String       @id @default(cuid())
+  externalId     String       @unique
+  displayName    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  attempts       GameAttempt[]
+  friendshipsOut Friendship[] @relation("FriendshipsOut")
+  friendshipsIn  Friendship[] @relation("FriendshipsIn")
+}
+
+model GameAttempt {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  puzzleDate String
+  solved     Boolean  @default(false)
+  gaveUp     Boolean  @default(false)
+  solvedIn   Int?
+  guesses    Json     @default("[]")
+  shareCode  String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([playerId, puzzleDate])
+  @@index([puzzleDate])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  playerId  String
+  friendId  String
+  createdAt DateTime @default(now())
+  player    Player   @relation("FriendshipsOut", fields: [playerId], references: [id], onDelete: Cascade)
+  friend    Player   @relation("FriendshipsIn", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, friendId])
+}

@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: freqle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: freqle
+      POSTGRES_USER: freqle
+      POSTGRES_PASSWORD: freqle
+    ports:
+      - "5432:5432"
+    volumes:
+      - freqle-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freqle -d freqle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  freqle-postgres-data:

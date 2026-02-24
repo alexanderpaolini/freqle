@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# freqle
 
-## Getting Started
+Daily Wordle-style hashmap guessing game built with Next.js.
 
-First, run the development server:
+You are shown a hashmap preview:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```txt
+28: 1
+30: 4
+31: 7
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+You must guess what real-world dataset that map represents.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Current default answer set:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Number of days in each month (non leap year)
 
-## Learn More
+## Features
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js App Router app scaffolded via `create-next-app`
+- Optional Discord authentication using `next-auth`
+- Daily puzzle flow with up to 6 tries and localStorage cache
+- Login-after-play sync (anonymous local attempts can be saved to DB later)
+- Account settings popup for username updates and full account/data deletion
+- OpenRouter-based closeness scoring for incorrect guesses
+- Custom 9-char share links on home route (example: `/?share=465r7tyig`) with social metadata and automatic friend-linking
+- Solved-state center popup with avg/median + tries distribution chart and one-click `Share`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Install dependencies:
 
-## Deploy on Vercel
+```bash
+pnpm install
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. Start PostgreSQL:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+docker compose up -d
+```
+
+3. Create your env file:
+
+```bash
+cp .env.example .env.local
+```
+
+4. Fill required values in `.env.local`:
+
+- `NEXTAUTH_URL` (usually `http://localhost:3000`)
+- `NEXTAUTH_SECRET`
+- `DATABASE_URL`
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `OPENROUTER_API_KEY`
+
+Optional:
+
+- `OPENROUTER_MODEL`
+- `OPENROUTER_SITE_URL`
+- `OPENROUTER_APP_NAME`
+
+5. Push Prisma schema to your local DB:
+
+```bash
+pnpm db:push
+```
+
+6. Run locally:
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Formatting
+
+```bash
+npm run format
+# or
+pnpm format
+```
+
+## Database Scripts
+
+```bash
+pnpm db:generate
+pnpm db:push
+```
+
+## Discord OAuth callback URL
+
+In your Discord OAuth app, configure redirect URI:
+
+```txt
+http://localhost:3000/api/auth/callback/discord
+```
