@@ -30,7 +30,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
           {tries ? (
             <>
               Solved in <span className="font-semibold">{tries}</span>{" "}
-              {tries === 1 ? "try" : "tries"}.
+              {tries === 1 ? "attempt" : "attempts"}.
             </>
           ) : (
             "No tries count was provided in the share link."
