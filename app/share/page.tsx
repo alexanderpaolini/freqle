@@ -22,7 +22,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   const playHref = ref ? `/?friend=${encodeURIComponent(ref)}` : "/";
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fef6e7,_#efe4d4)] px-4 py-10 text-stone-900">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#efe4d4)] px-4 py-10 text-stone-900">
       <Card className="mx-auto max-w-xl text-center shadow-[0_18px_50px_-28px_rgba(31,29,26,0.45)]">
         <CardContent className="p-8">
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-stone-500">
