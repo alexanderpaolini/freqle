@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Cog } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { redirect } from "next/navigation";
 
 const DEFAULT_DISTRIBUTION_BUCKETS = 6;
 const PREVIEW_ENTRIES = [
@@ -37,6 +39,7 @@ type SharedSummary = {
   ownerName: string;
   tries: number;
   dateKey: string;
+  gaveUp: boolean;
 };
 
 type HomeClientProps = {
@@ -64,13 +67,11 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [results, setResults] = useState<GuessResult[]>([]);
   const [hasGivenUp, setHasGivenUp] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [isCopiedToastVisible, setIsCopiedToastVisible] = useState(false);
 
   const dateKey = useMemo(getDateKey, []);
   const solvedIndex = results.findIndex((entry) => entry.correct);
   const isSolved = solvedIndex >= 0;
+  const isPuzzleComplete = isSolved || hasGivenUp;
   const triesUsed = isSolved ? solvedIndex + 1 : results.length;
   const shareUrl =
     generatedShareId && typeof window !== "undefined"
@@ -178,19 +179,19 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
   }, [dateKey, isSolvedModalOpen]);
 
   useEffect(() => {
-    if (isSolved) {
+    if (isPuzzleComplete) {
       return;
     }
 
     setIsSolvedModalOpen(false);
     setGeneratedShareId(null);
     setIsGeneratingShare(false);
-  }, [isSolved]);
+  }, [isPuzzleComplete]);
 
   useEffect(() => {
     if (
       !isSolvedModalOpen ||
-      !isSolved ||
+      !isPuzzleComplete ||
       status !== "authenticated" ||
       generatedShareId ||
       isGeneratingShare
@@ -218,6 +219,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
           body: JSON.stringify({
             dateKey,
             localSolved: isSolved,
+            localGaveUp: hasGivenUp,
             localTries: triesUsed,
           }),
         });
@@ -252,7 +254,9 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     dateKey,
     generatedShareId,
     isGeneratingShare,
+    hasGivenUp,
     isSolved,
+    isPuzzleComplete,
     isSolvedModalOpen,
     triesUsed,
     status,
@@ -320,7 +324,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         };
 
         if (!response.ok) {
-          setError(payload.error ?? "Could not load account settings.");
+          toast.error(payload.error ?? "Could not load account settings.");
           return;
         }
 
@@ -341,7 +345,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         ) {
           return;
         }
-        setError("Could not load account settings.");
+        toast.error("Could not load account settings.");
       } finally {
         setIsLoadingAccount(false);
       }
@@ -364,7 +368,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
     const controller = new AbortController();
     const loadAttempts = async () => {
-      setError(null);
       setIsLoadingAttempts(true);
 
       try {
@@ -386,7 +389,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
             const syncPayload = (await syncResponse.json()) as {
               error?: string;
             };
-            setError(syncPayload.error ?? "Could not sync local attempts.");
+            toast.error(syncPayload.error ?? "Could not sync local attempts.");
           } else {
             clearAttemptFromStorage(dateKey);
           }
@@ -408,7 +411,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         };
 
         if (!response.ok) {
-          setError(payload.error ?? "Could not load saved attempts.");
+          toast.error(payload.error ?? "Could not load saved attempts.");
           return;
         }
 
@@ -423,7 +426,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         ) {
           return;
         }
-        setError("Could not load saved attempts.");
+        toast.error("Could not load saved attempts.");
       } finally {
         setIsLoadingAttempts(false);
       }
@@ -452,8 +455,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       return;
     }
 
-    let cancelled = false;
-
     const linkFromShare = async () => {
       try {
         const response = await fetch("/api/share/link", {
@@ -475,36 +476,16 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
           return;
         }
 
-        const payload = (await response.json()) as { linked?: boolean };
         window.sessionStorage.removeItem(PENDING_SHARE_STORAGE_KEY);
-        if (!cancelled && payload.linked) {
-          setNotice("Friend link saved.");
-        }
+
+        window.location = "/";
       } catch {
         // Ignore and retry next session refresh.
       }
     };
 
     void linkFromShare();
-
-    return () => {
-      cancelled = true;
-    };
   }, [session?.user?.id, status]);
-
-  useEffect(() => {
-    if (!isCopiedToastVisible) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setIsCopiedToastVisible(false);
-    }, 2000);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [isCopiedToastVisible]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -519,8 +500,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       return;
     }
 
-    setError(null);
-    setNotice(null);
     setIsSubmitting(true);
 
     try {
@@ -542,7 +521,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       };
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not evaluate your guess.");
+        toast.error(payload.error ?? "Could not evaluate your guess.");
         return;
       }
 
@@ -559,7 +538,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         setIsSolvedModalOpen(true);
       }
     } catch {
-      setError("Request failed. Try again.");
+      toast.error("Request failed. Try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -583,8 +562,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       return;
     }
 
-    setError(null);
-    setNotice(null);
     setIsGivingUp(true);
 
     try {
@@ -603,16 +580,15 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         gaveUp?: boolean;
       };
       if (!response.ok) {
-        setError(payload.error ?? "Could not give up right now.");
+        toast.error(payload.error ?? "Could not give up right now.");
         return;
       }
 
       setHasGivenUp(payload.gaveUp === true);
-      setNotice(`You gave up. Today's answer was: ${SOLUTION_LABEL}`);
       setIsSolvedModalOpen(false);
       setGeneratedShareId(null);
     } catch {
-      setError("Could not give up right now.");
+      toast.error("Could not give up right now.");
     } finally {
       setIsGivingUp(false);
     }
@@ -625,11 +601,11 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     }
 
     const nextShareUrl = buildShareUrl(shareId);
-    try {
-      await navigator.clipboard.writeText(nextShareUrl);
-      setIsCopiedToastVisible(true);
-    } catch {
-      setError("Unable to share right now.");
+    const copied = await copyTextToClipboard(nextShareUrl);
+    if (copied) {
+      toast.success("Copied to clipboard");
+    } else {
+      toast.error("Unable to copy link right now.");
     }
   }
 
@@ -649,14 +625,9 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
     if (status !== "authenticated") {
       if (!silent) {
-        setError("Sign in to generate a share link.");
+        toast.error("Sign in to generate a share link.");
       }
       return null;
-    }
-
-    if (!silent) {
-      setError(null);
-      setNotice(null);
     }
 
     setIsGeneratingShare(true);
@@ -676,6 +647,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         body: JSON.stringify({
           dateKey,
           localSolved: isSolved,
+          localGaveUp: hasGivenUp,
           localTries: triesUsed,
         }),
       });
@@ -687,14 +659,14 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
       if (!response.ok) {
         if (!silent) {
-          setError(payload.error ?? "Could not generate a share link.");
+          toast.error(payload.error ?? "Could not generate a share link.");
         }
         return null;
       }
 
       if (!payload.shareId) {
         if (!silent) {
-          setError("Could not generate a share link.");
+          toast.error("Could not generate a share link.");
         }
         return null;
       }
@@ -704,9 +676,9 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     } catch (caught) {
       if (!silent) {
         if (isAbortError(caught)) {
-          setError("Share generation timed out. Try again.");
+          toast.error("Share generation timed out. Try again.");
         } else {
-          setError("Could not generate a share link.");
+          toast.error("Could not generate a share link.");
         }
       }
       return null;
@@ -724,12 +696,10 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
     const trimmedName = settingsName.trim();
     if (!trimmedName) {
-      setError("Username cannot be empty.");
+      toast.error("Username cannot be empty.");
       return;
     }
 
-    setError(null);
-    setNotice(null);
     setIsSavingSettings(true);
 
     try {
@@ -749,7 +719,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       };
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not update username.");
+        toast.error(payload.error ?? "Could not update username.");
         return;
       }
 
@@ -760,10 +730,10 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
       setAccountName(nextName);
       setSettingsName(nextName);
-      setNotice("Username updated.");
+      toast.success("Username updated.");
       setIsSettingsOpen(false);
     } catch {
-      setError("Could not update username.");
+      toast.error("Could not update username.");
     } finally {
       setIsSavingSettings(false);
     }
@@ -781,8 +751,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       return;
     }
 
-    setError(null);
-    setNotice(null);
     setIsDeletingAccount(true);
 
     try {
@@ -792,7 +760,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
 
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(payload.error ?? "Could not delete account.");
+        toast.error(payload.error ?? "Could not delete account.");
         return;
       }
 
@@ -806,7 +774,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       setGeneratedShareId(null);
       await signOut({ callbackUrl: "/" });
     } catch {
-      setError("Could not delete account.");
+      toast.error("Could not delete account.");
     } finally {
       setIsDeletingAccount(false);
     }
@@ -818,9 +786,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     setGuess("");
     setHasGivenUp(false);
     setIsGivingUp(false);
-    setError(null);
-    setNotice(null);
-    setIsCopiedToastVisible(false);
     setGeneratedShareId(null);
     setIsSolvedModalOpen(false);
     await signOut({ callbackUrl: "/" });
@@ -965,7 +930,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
-                {triesUsed} {triesUsed === 1 ? "try" : "tries"} used
+                {triesUsed} {triesUsed === 1 ? "attempt" : "attempts"} used
               </p>
               {isSolved || hasGivenUp ? (
                 <button
@@ -1009,17 +974,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
               )}
             </div>
           </form>
-
-          {error ? (
-            <p className="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="mt-3 rounded-lg bg-green-100 px-3 py-2 text-sm text-green-700">
-              {notice}
-            </p>
-          ) : null}
 
           {hasGivenUp ? (
             <div className="mt-5 rounded-lg bg-red-100 px-3 py-2 text-sm text-amber-900">
@@ -1122,7 +1076,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
             </div>
 
             <div className="mt-4 rounded-2xl border border-stone-300 bg-white p-4">
-              <p className="text-sm font-semibold">Tries Distribution</p>
+              <p className="text-sm font-semibold">Distribution</p>
               {isLoadingStats ? (
                 <p className="mt-2 text-sm text-stone-500">Loading chart...</p>
               ) : (
@@ -1180,14 +1134,6 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
           </div>
         </div>
       ) : null}
-
-      {isCopiedToastVisible ? (
-        <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
-          <div className="rounded-full bg-stone-900/95 px-4 py-2 text-sm font-medium text-white shadow-xl">
-            Copied to clipboard
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }
@@ -1204,6 +1150,44 @@ function buildShareUrl(shareId: string) {
   const url = new URL("/", window.location.origin);
   url.searchParams.set("share", shareId);
   return url.toString();
+}
+
+async function copyTextToClipboard(value: string): Promise<boolean> {
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function"
+  ) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Fallback to legacy copy path below.
+    }
+  }
+
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
 }
 
 function getAttemptStorageKey(dateKey: string) {

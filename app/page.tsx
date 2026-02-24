@@ -14,6 +14,7 @@ type SharedSummary = {
   ownerName: string;
   tries: number;
   dateKey: string;
+  gaveUp: boolean;
 };
 
 const FALLBACK_SITE_URL = "http://localhost:3000";
@@ -34,8 +35,15 @@ export async function generateMetadata({
     return {};
   }
 
-  const title = `${sharedSummary.ownerName} solved freqle in ${sharedSummary.tries} tries`;
-  const description = `Puzzle date: ${sharedSummary.dateKey}. Can you beat that score?`;
+  const attemptsLabel = sharedSummary.tries === 1 ? "attempt" : "attempts";
+  const title = sharedSummary.gaveUp
+    ? sharedSummary.tries > 0
+      ? `${sharedSummary.ownerName} gave up on freqle after ${sharedSummary.tries} ${attemptsLabel}`
+      : `${sharedSummary.ownerName} gave up on freqle`
+    : `${sharedSummary.ownerName} solved freqle in ${sharedSummary.tries} tries`;
+  const description = sharedSummary.gaveUp
+    ? `Puzzle date: ${sharedSummary.dateKey}. Can you solve it?`
+    : `Puzzle date: ${sharedSummary.dateKey}. Can you beat that score?`;
   const siteUrl = process.env.NEXTAUTH_URL ?? FALLBACK_SITE_URL;
   const url = `${siteUrl}/?share=${shareId}`;
 
@@ -86,7 +94,7 @@ async function getSharedSummary(
 
   const tries =
     sharedAttempt.solvedIn ?? parseAttemptGuesses(sharedAttempt.guesses).length;
-  if (tries < 1) {
+  if (tries < 1 && !sharedAttempt.gaveUp) {
     return null;
   }
 
@@ -94,5 +102,6 @@ async function getSharedSummary(
     ownerName: sharedAttempt.player.displayName ?? "A player",
     tries,
     dateKey: sharedAttempt.puzzleDate,
+    gaveUp: sharedAttempt.gaveUp,
   };
 }

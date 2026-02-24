@@ -10,6 +10,7 @@ import { generateShareCode, normalizeShareCode } from "@/lib/share";
 type CreateShareBody = {
   dateKey?: unknown;
   localSolved?: unknown;
+  localGaveUp?: unknown;
   localTries?: unknown;
 };
 
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     typeof body.dateKey === "string" ? body.dateKey : null,
   );
   const localSolved = body.localSolved === true;
+  const localGaveUp = body.localGaveUp === true;
   const localTries = normalizeLocalTries(body.localTries);
 
   const player = await db.player.upsert({
@@ -68,7 +70,10 @@ export async function POST(request: Request) {
   if (!attempt || (!attempt.solved && !attempt.gaveUp)) {
     if (!localSolved || !localTries) {
       return NextResponse.json(
-        { error: "Solve today's puzzle before generating a share link." },
+        {
+          error:
+            "Solve or give up today's puzzle before generating a share link.",
+        },
         { status: 400 },
       );
     }
@@ -105,9 +110,13 @@ export async function POST(request: Request) {
 
   const guessedEntries = parseAttemptGuesses(attempt.guesses);
   const tries = attempt.solvedIn ?? guessedEntries.length;
-  if (tries < 1) {
+  const gaveUp = attempt.gaveUp || localGaveUp;
+  if (!gaveUp && tries < 1) {
     return NextResponse.json(
-      { error: "Solve today's puzzle before generating a share link." },
+      {
+        error:
+          "Solve or give up today's puzzle before generating a share link.",
+      },
       { status: 400 },
     );
   }
@@ -123,7 +132,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ shareId: shareCode, tries, dateKey });
+  return NextResponse.json({ shareId: shareCode, tries, dateKey, gaveUp });
 }
 
 function sanitizeDateKey(input: string | null): string {
