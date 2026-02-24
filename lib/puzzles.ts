@@ -126,24 +126,3 @@ export function normalizeText(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-export function isCorrectGuess(puzzle: Puzzle, guess: string): boolean {
-  const normalizedGuess = normalizeText(guess);
-  if (!normalizedGuess) {
-    return false;
-  }
-
-  const answers = [puzzle.answer, ...puzzle.acceptedAnswers].map(normalizeText);
-
-  return answers.some((candidate) => {
-    if (!candidate) {
-      return false;
-    }
-
-    return (
-      normalizedGuess === candidate ||
-      normalizedGuess.includes(candidate) ||
-      candidate.includes(normalizedGuess)
-    );
-  });
-}

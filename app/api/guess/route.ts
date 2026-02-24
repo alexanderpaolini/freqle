@@ -4,11 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { parseAttemptGuesses, toAttemptGuessesJson } from "@/lib/attempts";
 import { db } from "@/lib/db";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
-import {
-  getDailyPuzzleFromDateKey,
-  getDateKey,
-  isCorrectGuess,
-} from "@/lib/puzzles";
+import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 
 type GuessBody = {
   guess?: unknown;
@@ -85,31 +81,21 @@ export async function POST(request: Request) {
   }
 
   const puzzle = getDailyPuzzleFromDateKey(dateKey);
-  const correct = isCorrectGuess(puzzle, guess);
-
   if (!session?.user?.id) {
-    if (correct) {
-      return NextResponse.json({
-        correct: true,
-        score: 100,
-        verdict: "correct",
-        gaveUp: false,
-        saved: false,
-      });
-    }
-
     try {
-      const scoreResult = await scoreGuessWithOpenRouter({ guess, puzzle });
+      const judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
+      const correct = judgment.verdict === "correct";
       return NextResponse.json({
-        correct: false,
-        score: scoreResult.score,
-        verdict: "incorrect",
+        correct,
+        score: judgment.score,
+        verdict: judgment.verdict,
+        reason: judgment.reason,
         gaveUp: false,
         saved: false,
       });
     } catch {
       return NextResponse.json(
-        { error: "Unable to score guess right now. Try again." },
+        { error: "Unable to judge guess right now. Try again." },
         { status: 502 },
       );
     }
@@ -159,26 +145,32 @@ export async function POST(request: Request) {
 
   if (attempt.solved || existingResults.some((entry) => entry.correct)) {
     return NextResponse.json(
-      { error: "Today is already solved on this account." },
+      { error: "You already solved today's puzzle." },
       { status: 409 },
     );
   }
 
-  let score = 100;
-
-  if (!correct) {
-    try {
-      const scoreResult = await scoreGuessWithOpenRouter({ guess, puzzle });
-      score = scoreResult.score;
-    } catch {
-      return NextResponse.json(
-        { error: "Unable to score guess right now. Try again." },
-        { status: 502 },
-      );
-    }
+  let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
+  try {
+    judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to judge guess right now. Try again." },
+      { status: 502 },
+    );
   }
 
-  const nextResults = [...existingResults, { guess, score, correct }];
+  const correct = judgment.verdict === "correct";
+  const nextResults = [
+    ...existingResults,
+    {
+      guess,
+      score: judgment.score,
+      verdict: judgment.verdict,
+      reason: judgment.reason,
+      correct,
+    },
+  ];
   const triesUsed = nextResults.length;
 
   await db.gameAttempt.update({
@@ -188,15 +180,16 @@ export async function POST(request: Request) {
     data: {
       guesses: toAttemptGuessesJson(nextResults),
       gaveUp: false,
-      solved: correct ? true : attempt.solved,
-      solvedIn: correct ? triesUsed : attempt.solvedIn,
+      solved: correct,
+      solvedIn: correct ? triesUsed : null,
     },
   });
 
   return NextResponse.json({
     correct,
-    score,
-    verdict: correct ? "correct" : "incorrect",
+    score: judgment.score,
+    verdict: judgment.verdict,
+    reason: judgment.reason,
     triesUsed,
     noTriesLeft: false,
     gaveUp: false,

@@ -1,3 +1,5 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 type GiveUpBannerProps = {
   revealedAnswer: string | null;
 };
@@ -8,9 +10,12 @@ export function GiveUpBanner({ revealedAnswer }: GiveUpBannerProps) {
   }
 
   return (
-    <div className="mt-5 rounded-lg bg-red-100 px-3 py-2 text-sm text-amber-900">
-      <p>You gave up. Today&apos;s answer was:</p>
-      <p className="font-bold">{revealedAnswer}</p>
-    </div>
+    <Alert variant="destructive" className="mt-5">
+      <AlertTitle>You gave up.</AlertTitle>
+      <AlertDescription>
+        <p>Today&apos;s answer was:</p>
+        <p className="font-bold">{revealedAnswer}</p>
+      </AlertDescription>
+    </Alert>
   );
 }

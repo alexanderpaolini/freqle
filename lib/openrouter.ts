@@ -1,7 +1,11 @@
 import type { Puzzle } from "@/lib/puzzles";
 
-export type GuessScore = {
+export type JudgeVerdict = "correct" | "incorrect";
+
+export type GuessJudgment = {
   score: number;
+  verdict: JudgeVerdict;
+  reason: string;
 };
 
 type ScoreGuessParams = {
@@ -12,7 +16,7 @@ type ScoreGuessParams = {
 export async function scoreGuessWithOpenRouter({
   guess,
   puzzle,
-}: ScoreGuessParams): Promise<GuessScore> {
+}: ScoreGuessParams): Promise<GuessJudgment> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not set");
@@ -34,23 +38,29 @@ export async function scoreGuessWithOpenRouter({
       },
       body: JSON.stringify({
         model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
-        temperature: 0.2,
-        max_tokens: 80,
+        temperature: 0,
+        max_tokens: 180,
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
             content:
-              "You score semantic similarity between a puzzle answer and user guess. Return valid JSON only.",
+              "You are a strict puzzle judge. Return valid JSON only.",
           },
           {
             role: "user",
             content: [
-              "Score this guess from 0-100.",
-              `Correct answer: "${puzzle.answer}"`,
+              "Determine whether the guess matches the intended dataset.",
+              `Canonical answer: "${puzzle.answer}"`,
+              `Accepted alternate answers: ${puzzle.acceptedAnswers.join(", ")}`,
               `User guess: "${guess}"`,
-              "Return JSON with this exact schema:",
-              '{"score": number}',
+              "Rules:",
+              '- score: integer between 0 and 100.',
+              '- verdict: "correct" if it matches; otherwise "incorrect".',
+              '- If verdict is "correct", score must be 100.',
+              '- reason: one short sentence explaining the judgment.',
+              "Return JSON with this exact schema and no extra fields:",
+              '{"score": number, "verdict": "correct" | "incorrect", "reason": string }',
             ].join("\n"),
           },
         ],
@@ -67,11 +77,27 @@ export async function scoreGuessWithOpenRouter({
   const content = extractContent(payload);
   const parsed = parseJsonObject(content);
 
-  if (!parsed || typeof parsed.score !== "number") {
+  if (
+    !parsed ||
+    typeof parsed.score !== "number" ||
+    (parsed.verdict !== "correct" && parsed.verdict !== "incorrect") ||
+    typeof parsed.reason !== "string"
+  ) {
     throw new Error("Malformed OpenRouter JSON payload");
   }
 
-  return { score: clamp(Math.round(parsed.score), 0, 99) };
+  const verdict = parsed.verdict;
+  const score =
+    verdict === "correct"
+      ? 100
+      : clamp(Math.round(parsed.score), 0, 99);
+  const reason = parsed.reason.trim();
+
+  if (!reason) {
+    throw new Error("Malformed OpenRouter JSON payload");
+  }
+
+  return { score, verdict, reason };
 }
 
 function extractContent(payload: unknown): string {
@@ -102,7 +128,11 @@ function extractContent(payload: unknown): string {
   return "";
 }
 
-function parseJsonObject(text: string): { score?: number } | null {
+function parseJsonObject(text: string): {
+  score?: number;
+  verdict?: unknown;
+  reason?: unknown;
+} | null {
   if (!text.trim()) {
     return null;
   }

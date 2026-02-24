@@ -4,11 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { parseAttemptGuesses, toAttemptGuessesJson } from "@/lib/attempts";
 import { db } from "@/lib/db";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
-import {
-  getDailyPuzzleFromDateKey,
-  getDateKey,
-  isCorrectGuess,
-} from "@/lib/puzzles";
+import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 
 type SyncBody = {
   dateKey?: unknown;
@@ -100,22 +96,24 @@ export async function POST(request: Request) {
       break;
     }
 
-    const correct = isCorrectGuess(puzzle, guess);
-    let score = 100;
-
-    if (!correct) {
-      try {
-        const scoreResult = await scoreGuessWithOpenRouter({ guess, puzzle });
-        score = scoreResult.score;
-      } catch {
-        return NextResponse.json(
-          { error: "Unable to sync local guesses right now. Try again." },
-          { status: 502 },
-        );
-      }
+    let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
+    try {
+      judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
+    } catch {
+      return NextResponse.json(
+        { error: "Unable to judge local guesses right now. Try again." },
+        { status: 502 },
+      );
     }
 
-    nextGuesses.push({ guess, score, correct });
+    const correct = judgment.verdict === "correct";
+    nextGuesses.push({
+      guess,
+      score: judgment.score,
+      verdict: judgment.verdict,
+      reason: judgment.reason,
+      correct,
+    });
     triesUsed += 1;
 
     if (correct) {

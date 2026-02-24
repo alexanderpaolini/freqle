@@ -799,8 +799,7 @@ export function HomeClient({
           onSignOut={() => {
             void signOutAndClearLocalData();
           }}
-          onToggleSettings={() => setIsSettingsOpen((value) => !value)}
-          onCloseSettings={() => setIsSettingsOpen(false)}
+          onSettingsOpenChange={setIsSettingsOpen}
           onSettingsNameChange={setSettingsName}
           onSaveSettings={saveSettings}
           onDeleteAccount={deleteAccount}

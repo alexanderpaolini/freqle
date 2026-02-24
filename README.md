@@ -21,6 +21,7 @@ Current puzzle bank includes:
 ## Features
 
 - Next.js App Router app scaffolded via `create-next-app`
+- shadcn/ui component system (Radix + Tailwind) for app interface primitives
 - Optional Discord authentication using `next-auth`
 - Daily puzzle flow with unlimited tries or give-up, plus localStorage cache
 - Login-after-play sync (anonymous local attempts can be saved to DB later)

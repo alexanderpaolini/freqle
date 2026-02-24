@@ -1,5 +1,11 @@
 import type { FormEvent } from "react";
 import { Cog } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SettingsPopover } from "./settings-popover";
 
 type AuthHeaderProps = {
@@ -12,8 +18,7 @@ type AuthHeaderProps = {
   isDeletingAccount: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
-  onToggleSettings: () => void;
-  onCloseSettings: () => void;
+  onSettingsOpenChange: (open: boolean) => void;
   onSettingsNameChange: (value: string) => void;
   onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteAccount: () => void;
@@ -29,8 +34,7 @@ export function AuthHeader({
   isDeletingAccount,
   onSignIn,
   onSignOut,
-  onToggleSettings,
-  onCloseSettings,
+  onSettingsOpenChange,
   onSettingsNameChange,
   onSaveSettings,
   onDeleteAccount,
@@ -48,45 +52,42 @@ export function AuthHeader({
         {status === "authenticated" ? (
           <>
             <p className="text-sm text-stone-600">@{shownUsername}</p>
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="rounded-full border border-stone-400 bg-white px-4 py-2 text-sm font-medium hover:bg-stone-100"
-            >
+            <Button type="button" variant="outline" onClick={onSignOut}>
               Sign out
-            </button>
+            </Button>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={onToggleSettings}
-                aria-label="Open settings"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-400 bg-white hover:bg-stone-100"
-              >
-                <Cog className="h-4 w-4 text-stone-700" />
-              </button>
-
-              <SettingsPopover
-                isOpen={isSettingsOpen}
-                settingsName={settingsName}
-                isLoadingAccount={isLoadingAccount}
-                isSavingSettings={isSavingSettings}
-                isDeletingAccount={isDeletingAccount}
-                onClose={onCloseSettings}
-                onSettingsNameChange={onSettingsNameChange}
-                onSaveSettings={onSaveSettings}
-                onDeleteAccount={onDeleteAccount}
-              />
-            </div>
+            <DropdownMenu
+              open={isSettingsOpen}
+              onOpenChange={onSettingsOpenChange}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Open settings"
+                >
+                  <Cog className="h-4 w-4 text-stone-700" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-0">
+                <SettingsPopover
+                  settingsName={settingsName}
+                  isLoadingAccount={isLoadingAccount}
+                  isSavingSettings={isSavingSettings}
+                  isDeletingAccount={isDeletingAccount}
+                  onClose={() => onSettingsOpenChange(false)}
+                  onSettingsNameChange={onSettingsNameChange}
+                  onSaveSettings={onSaveSettings}
+                  onDeleteAccount={onDeleteAccount}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={onSignIn}
-            className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700"
-          >
+          <Button type="button" onClick={onSignIn}>
             Sign in
-          </button>
+          </Button>
         )}
       </div>
     </div>
