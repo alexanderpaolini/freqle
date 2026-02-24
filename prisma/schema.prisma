@@ -13,6 +13,7 @@ model Player {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   attempts       GameAttempt[]
+  suggestions    Suggestion[]
   friendshipsOut Friendship[] @relation("FriendshipsOut")
   friendshipsIn  Friendship[] @relation("FriendshipsIn")
 }
@@ -26,15 +27,31 @@ model GameAttempt {
   solved      Boolean  @default(false)
   gaveUp      Boolean  @default(false)
   solvedIn    Int?
-  guesses     Json     @default("[]")
   shareCode   String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  guesses     Guess[]
 
   @@unique([playerId, puzzleDate])
   @@unique([anonymousId, puzzleDate])
   @@index([puzzleDate])
   @@index([anonymousId])
+}
+
+model Guess {
+  id        String      @id @default(cuid())
+  attemptId String
+  attempt   GameAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  position  Int
+  guess     String
+  score     Int
+  verdict   String
+  reason    String
+  correct   Boolean
+  createdAt DateTime    @default(now())
+
+  @@unique([attemptId, position])
+  @@index([attemptId])
 }
 
 model Friendship {
@@ -46,4 +63,17 @@ model Friendship {
   friend    Player   @relation("FriendshipsIn", fields: [friendId], references: [id], onDelete: Cascade)
 
   @@unique([playerId, friendId])
+}
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  playerId  String?
+  player    Player?  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  dateKey   String
+  puzzleId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+  @@index([dateKey])
 }

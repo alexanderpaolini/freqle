@@ -1,11 +1,20 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { AttemptsSection } from "./components/home/attempts-section";
 import { GamePanel } from "./components/home/game-panel";
+import { HowToDialog } from "./components/home/how-to-dialog";
 import { ResultsModal } from "./components/home/results-modal";
+import { SuggestDialog } from "./components/home/suggest-dialog";
 import type {
   DistributionBucket,
   GuessResult,
@@ -48,6 +57,8 @@ export function HomeClient({
   const [results, setResults] = useState<GuessResult[]>([]);
   const [hasGivenUp, setHasGivenUp] = useState(false);
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  const autoShareRequestedRef = useRef(false);
+  const shareRequestRef = useRef<Promise<string | null> | null>(null);
 
   const dateKey = useMemo(getDateKey, []);
   const solvedIndex = results.findIndex((entry) => entry.correct);
@@ -161,82 +172,124 @@ export function HomeClient({
       return;
     }
 
+    autoShareRequestedRef.current = false;
+    shareRequestRef.current = null;
     setIsSolvedModalOpen(false);
     setGeneratedShareId(null);
     setIsGeneratingShare(false);
   }, [isPuzzleComplete]);
 
+  const ensureShareId = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+
+      if (generatedShareId) {
+        return generatedShareId;
+      }
+
+      if (status !== "authenticated") {
+        if (!silent) {
+          toast.error("Sign in to generate a share link.");
+        }
+        return null;
+      }
+
+      if (shareRequestRef.current) {
+        return shareRequestRef.current;
+      }
+
+      const requestPromise = (async () => {
+        setIsGeneratingShare(true);
+        const controller = new AbortController();
+        const timeoutHandle = window.setTimeout(() => {
+          controller.abort();
+        }, SHARE_REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await fetch("/api/share", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+            signal: controller.signal,
+            body: JSON.stringify({
+              dateKey,
+              localSolved: isSolved,
+              localGaveUp: hasGivenUp,
+              localTries: triesUsed,
+            }),
+          });
+
+          const payload = (await response.json()) as {
+            error?: string;
+            shareId?: string;
+          };
+
+          if (!response.ok) {
+            if (!silent) {
+              toast.error(payload.error ?? "Could not generate a share link.");
+            }
+            return null;
+          }
+
+          if (!payload.shareId) {
+            if (!silent) {
+              toast.error("Could not generate a share link.");
+            }
+            return null;
+          }
+
+          setGeneratedShareId(payload.shareId);
+          return payload.shareId;
+        } catch (caught) {
+          if (!silent) {
+            if (isAbortError(caught)) {
+              toast.error("Share generation timed out. Try again.");
+            } else {
+              toast.error("Could not generate a share link.");
+            }
+          }
+          return null;
+        } finally {
+          window.clearTimeout(timeoutHandle);
+          setIsGeneratingShare(false);
+          shareRequestRef.current = null;
+        }
+      })();
+
+      shareRequestRef.current = requestPromise;
+      return requestPromise;
+    },
+    [dateKey, generatedShareId, hasGivenUp, isSolved, status, triesUsed],
+  );
+
   useEffect(() => {
     if (
       !isSolvedModalOpen ||
       !isPuzzleComplete ||
-      status !== "authenticated" ||
+      status !== "authenticated"
+    ) {
+      autoShareRequestedRef.current = false;
+      return;
+    }
+
+    if (
       generatedShareId ||
-      isGeneratingShare
+      isGeneratingShare ||
+      autoShareRequestedRef.current
     ) {
       return;
     }
 
-    let cancelled = false;
-    const controller = new AbortController();
-    let timeoutHandle: number | null = null;
-
-    const autoGenerateShareId = async () => {
-      try {
-        timeoutHandle = window.setTimeout(() => {
-          controller.abort();
-        }, SHARE_REQUEST_TIMEOUT_MS);
-
-        const response = await fetch("/api/share", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-          signal: controller.signal,
-          body: JSON.stringify({
-            dateKey,
-            localSolved: isSolved,
-            localGaveUp: hasGivenUp,
-            localTries: triesUsed,
-          }),
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as { shareId?: string };
-        if (!cancelled && payload.shareId) {
-          setGeneratedShareId(payload.shareId);
-        }
-      } catch {
-        // Silent pre-generation.
-      } finally {
-        if (timeoutHandle !== null) {
-          window.clearTimeout(timeoutHandle);
-        }
-      }
-    };
-
-    void autoGenerateShareId();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-      if (timeoutHandle !== null) {
-        window.clearTimeout(timeoutHandle);
-      }
-    };
+    autoShareRequestedRef.current = true;
+    void ensureShareId({ silent: true });
   }, [
-    dateKey,
+    ensureShareId,
     generatedShareId,
     isGeneratingShare,
-    hasGivenUp,
-    isSolved,
     isPuzzleComplete,
     isSolvedModalOpen,
-    triesUsed,
     status,
   ]);
 
@@ -590,18 +643,38 @@ export function HomeClient({
   }
 
   async function shareSolvedResult() {
-    const shareId = await ensureShareId();
-    if (!shareId || typeof window === "undefined") {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const nextShareUrl = buildShareUrl(shareId);
+    if (!generatedShareId) {
+      if (!isGeneratingShare) {
+        toast.error("Preparing share link. Try again in a moment.");
+        void ensureShareId();
+      }
+      return;
+    }
+
+    const nextShareUrl = buildShareUrl(generatedShareId);
+
     const copied = await copyTextToClipboard(nextShareUrl);
     if (copied) {
       toast.success("Copied to clipboard");
-    } else {
-      toast.error("Unable to copy link right now.");
+      return;
     }
+
+    const shareId = await ensureShareId();
+    if (!shareId) {
+      return;
+    }
+
+    const retryCopied = await copyTextToClipboard(buildShareUrl(shareId));
+    if (retryCopied) {
+      toast.success("Copied to clipboard");
+      return;
+    }
+
+    toast.error("Unable to copy link right now.");
   }
 
   function signInToShare() {
@@ -609,78 +682,6 @@ export function HomeClient({
       window.sessionStorage.setItem(OPEN_RESULTS_AFTER_AUTH_STORAGE_KEY, "1");
     }
     void signIn("discord");
-  }
-
-  async function ensureShareId(options?: { silent?: boolean }) {
-    const silent = options?.silent ?? false;
-
-    if (generatedShareId) {
-      return generatedShareId;
-    }
-
-    if (status !== "authenticated") {
-      if (!silent) {
-        toast.error("Sign in to generate a share link.");
-      }
-      return null;
-    }
-
-    setIsGeneratingShare(true);
-    const controller = new AbortController();
-    const timeoutHandle = window.setTimeout(() => {
-      controller.abort();
-    }, SHARE_REQUEST_TIMEOUT_MS);
-
-    try {
-      const response = await fetch("/api/share", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        signal: controller.signal,
-        body: JSON.stringify({
-          dateKey,
-          localSolved: isSolved,
-          localGaveUp: hasGivenUp,
-          localTries: triesUsed,
-        }),
-      });
-
-      const payload = (await response.json()) as {
-        error?: string;
-        shareId?: string;
-      };
-
-      if (!response.ok) {
-        if (!silent) {
-          toast.error(payload.error ?? "Could not generate a share link.");
-        }
-        return null;
-      }
-
-      if (!payload.shareId) {
-        if (!silent) {
-          toast.error("Could not generate a share link.");
-        }
-        return null;
-      }
-
-      setGeneratedShareId(payload.shareId);
-      return payload.shareId;
-    } catch (caught) {
-      if (!silent) {
-        if (isAbortError(caught)) {
-          toast.error("Share generation timed out. Try again.");
-        } else {
-          toast.error("Could not generate a share link.");
-        }
-      }
-      return null;
-    } finally {
-      window.clearTimeout(timeoutHandle);
-      setIsGeneratingShare(false);
-    }
   }
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
@@ -789,7 +790,7 @@ export function HomeClient({
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fef6e7,_#f8efe2_45%,_#efe5d6)] px-4 py-8 text-stone-900">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#f8efe2_45%,#efe5d6)] px-4 py-8 text-stone-900">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
         <GamePanel
           status={status}
@@ -829,6 +830,22 @@ export function HomeClient({
           isLoadingAttempts={isLoadingAttempts}
           attempts={attemptsForDisplay}
         />
+
+        <footer className="flex items-center justify-center gap-1 border-t border-stone-300/60 pt-3">
+          <HowToDialog
+            triggerLabel="how to play"
+            triggerVariant="ghost"
+            triggerClassName="h-8 px-2 font-mono text-xs uppercase tracking-[0.12em] text-stone-600"
+          />
+          <span className="font-mono text-xs uppercase tracking-[0.12em] text-stone-400">
+            |
+          </span>
+          <SuggestDialog
+            triggerLabel="suggest a puzzle"
+            triggerVariant="ghost"
+            triggerClassName="h-8 px-2 font-mono text-xs uppercase tracking-[0.12em] text-stone-600"
+          />
+        </footer>
       </div>
 
       <ResultsModal
@@ -876,7 +893,7 @@ async function copyTextToClipboard(value: string): Promise<boolean> {
       await navigator.clipboard.writeText(value);
       return true;
     } catch {
-      // Fallback to legacy copy path below.
+      // Fallback paths below.
     }
   }
 

@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { parseAttemptGuesses } from "@/lib/attempts";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getDateKey } from "@/lib/puzzles";
@@ -62,8 +61,12 @@ export async function POST(request: Request) {
       solved: true,
       gaveUp: true,
       solvedIn: true,
-      guesses: true,
       shareCode: true,
+      _count: {
+        select: {
+          guesses: true,
+        },
+      },
     },
   });
 
@@ -102,14 +105,17 @@ export async function POST(request: Request) {
         solved: true,
         gaveUp: true,
         solvedIn: true,
-        guesses: true,
         shareCode: true,
+        _count: {
+          select: {
+            guesses: true,
+          },
+        },
       },
     });
   }
 
-  const guessedEntries = parseAttemptGuesses(attempt.guesses);
-  const tries = attempt.solvedIn ?? guessedEntries.length;
+  const tries = attempt.solvedIn ?? attempt._count.guesses;
   const gaveUp = attempt.gaveUp || localGaveUp;
   if (!gaveUp && tries < 1) {
     return NextResponse.json(

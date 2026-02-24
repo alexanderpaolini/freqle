@@ -117,7 +117,7 @@ export function ResultsModal({
               onClick={onShare}
               disabled={isGeneratingShare}
             >
-              {isGeneratingShare ? "Sharing..." : "Share"}
+              {isGeneratingShare ? "Preparing..." : "Share"}
             </Button>
           ) : (
             <Button type="button" onClick={onSignInToShare}>

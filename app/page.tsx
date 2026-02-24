@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { parseAttemptGuesses } from "@/lib/attempts";
 import { db } from "@/lib/db";
 import {
   getDailyPuzzle,
@@ -90,6 +89,11 @@ async function getSharedSummary(
       shareCode: shareId,
     },
     include: {
+      _count: {
+        select: {
+          guesses: true,
+        },
+      },
       player: {
         select: {
           displayName: true,
@@ -102,8 +106,7 @@ async function getSharedSummary(
     return null;
   }
 
-  const tries =
-    sharedAttempt.solvedIn ?? parseAttemptGuesses(sharedAttempt.guesses).length;
+  const tries = sharedAttempt.solvedIn ?? sharedAttempt._count.guesses;
   if (tries < 1 && !sharedAttempt.gaveUp) {
     return null;
   }

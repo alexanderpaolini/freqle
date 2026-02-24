@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import {
+  buildGuessCreateData,
+  parseAttemptGuesses,
+  type AttemptGuess,
+} from "@/lib/attempts";
 import { authOptions } from "@/lib/auth";
-import { parseAttemptGuesses, toAttemptGuessesJson } from "@/lib/attempts";
 import { db } from "@/lib/db";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
 import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
@@ -11,6 +15,28 @@ type GuessBody = {
   dateKey?: unknown;
   anonymousId?: unknown;
 };
+
+const guessSelect = {
+  guess: true,
+  score: true,
+  verdict: true,
+  reason: true,
+  correct: true,
+  position: true,
+} as const;
+
+const attemptSelect = {
+  id: true,
+  solved: true,
+  gaveUp: true,
+  solvedIn: true,
+  guesses: {
+    select: guessSelect,
+    orderBy: {
+      position: "asc",
+    },
+  },
+} as const;
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -37,30 +63,10 @@ export async function GET(request: Request) {
           puzzleDate: dateKey,
         },
       },
-      select: {
-        solved: true,
-        gaveUp: true,
-        guesses: true,
-      },
+      select: attemptSelect,
     });
 
-    const results = anonymousAttempt
-      ? parseAttemptGuesses(anonymousAttempt.guesses)
-      : [];
-    const triesUsed = results.length;
-    const isSolved =
-      Boolean(anonymousAttempt?.solved) || results.some((entry) => entry.correct);
-    const gaveUp = Boolean(anonymousAttempt?.gaveUp);
-    const puzzle = getDailyPuzzleFromDateKey(dateKey);
-
-    return NextResponse.json({
-      results,
-      triesUsed,
-      isSolved,
-      gaveUp,
-      revealedAnswer: gaveUp ? puzzle.solutionLabel : null,
-      noTriesLeft: false,
-    });
+    return buildAttemptResponse(anonymousAttempt, dateKey);
   }
 
   const attempt = await db.gameAttempt.findFirst({
@@ -70,28 +76,10 @@ export async function GET(request: Request) {
         externalId: session.user.id,
       },
     },
-    select: {
-      solved: true,
-      gaveUp: true,
-      guesses: true,
-    },
+    select: attemptSelect,
   });
 
-  const results = attempt ? parseAttemptGuesses(attempt.guesses) : [];
-  const triesUsed = results.length;
-  const isSolved =
-    Boolean(attempt?.solved) || results.some((entry) => entry.correct);
-  const gaveUp = Boolean(attempt?.gaveUp);
-  const puzzle = getDailyPuzzleFromDateKey(dateKey);
-
-  return NextResponse.json({
-    results,
-    triesUsed,
-    isSolved,
-    gaveUp,
-    revealedAnswer: gaveUp ? puzzle.solutionLabel : null,
-    noTriesLeft: false,
-  });
+  return buildAttemptResponse(attempt, dateKey);
 }
 
 export async function POST(request: Request) {
@@ -138,74 +126,12 @@ export async function POST(request: Request) {
       create: {
         anonymousId,
         puzzleDate: dateKey,
-        guesses: toAttemptGuessesJson([]),
       },
       update: {},
-      select: {
-        id: true,
-        solved: true,
-        gaveUp: true,
-        guesses: true,
-      },
+      select: attemptSelect,
     });
 
-    const existingResults = parseAttemptGuesses(attempt.guesses);
-    if (attempt.gaveUp) {
-      return NextResponse.json(
-        { error: "You already gave up today's puzzle." },
-        { status: 409 },
-      );
-    }
-
-    if (attempt.solved || existingResults.some((entry) => entry.correct)) {
-      return NextResponse.json(
-        { error: "You already solved today's puzzle." },
-        { status: 409 },
-      );
-    }
-
-    try {
-      const judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
-      const correct = judgment.verdict === "correct";
-      const nextResults = [
-        ...existingResults,
-        {
-          guess,
-          score: judgment.score,
-          verdict: judgment.verdict,
-          reason: judgment.reason,
-          correct,
-        },
-      ];
-      const triesUsed = nextResults.length;
-
-      await db.gameAttempt.update({
-        where: {
-          id: attempt.id,
-        },
-        data: {
-          guesses: toAttemptGuessesJson(nextResults),
-          gaveUp: false,
-          solved: correct,
-          solvedIn: correct ? triesUsed : null,
-        },
-      });
-
-      return NextResponse.json({
-        correct,
-        score: judgment.score,
-        verdict: judgment.verdict,
-        reason: judgment.reason,
-        triesUsed,
-        gaveUp: false,
-        saved: true,
-      });
-    } catch {
-      return NextResponse.json(
-        { error: "Unable to judge guess right now. Try again." },
-        { status: 502 },
-      );
-    }
+    return submitGuessToAttempt({ attempt, guess, puzzle });
   }
 
   const player = await db.player.upsert({
@@ -229,28 +155,40 @@ export async function POST(request: Request) {
     create: {
       playerId: player.id,
       puzzleDate: dateKey,
-      guesses: toAttemptGuessesJson([]),
     },
     update: {},
-    select: {
-      id: true,
-      solved: true,
-      gaveUp: true,
-      solvedIn: true,
-      guesses: true,
-    },
+    select: attemptSelect,
   });
 
-  const existingResults = parseAttemptGuesses(attempt.guesses);
+  return submitGuessToAttempt({ attempt, guess, puzzle });
+}
 
-  if (attempt.gaveUp) {
+async function submitGuessToAttempt(input: {
+  attempt: {
+    id: string;
+    solved: boolean;
+    gaveUp: boolean;
+    guesses: Array<{
+      guess: string;
+      score: number;
+      verdict: string;
+      reason: string;
+      correct: boolean;
+      position: number;
+    }>;
+  };
+  guess: string;
+  puzzle: ReturnType<typeof getDailyPuzzleFromDateKey>;
+}) {
+  const existingResults = parseAttemptGuesses(input.attempt.guesses);
+  if (input.attempt.gaveUp) {
     return NextResponse.json(
       { error: "You already gave up today's puzzle." },
       { status: 409 },
     );
   }
 
-  if (attempt.solved || existingResults.some((entry) => entry.correct)) {
+  if (input.attempt.solved || existingResults.some((entry) => entry.correct)) {
     return NextResponse.json(
       { error: "You already solved today's puzzle." },
       { status: 409 },
@@ -259,7 +197,10 @@ export async function POST(request: Request) {
 
   let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
   try {
-    judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
+    judgment = await scoreGuessWithOpenRouter({
+      guess: input.guess,
+      puzzle: input.puzzle,
+    });
   } catch {
     return NextResponse.json(
       { error: "Unable to judge guess right now. Try again." },
@@ -268,29 +209,34 @@ export async function POST(request: Request) {
   }
 
   const correct = judgment.verdict === "correct";
-  const nextResults = [
-    ...existingResults,
-    {
-      guess,
-      score: judgment.score,
-      verdict: judgment.verdict,
-      reason: judgment.reason,
-      correct,
-    },
-  ];
-  const triesUsed = nextResults.length;
+  const nextGuess: AttemptGuess = {
+    guess: input.guess,
+    score: judgment.score,
+    verdict: judgment.verdict,
+    reason: judgment.reason,
+    correct,
+  };
+  const triesUsed = existingResults.length + 1;
 
-  await db.gameAttempt.update({
-    where: {
-      id: attempt.id,
-    },
-    data: {
-      guesses: toAttemptGuessesJson(nextResults),
-      gaveUp: false,
-      solved: correct,
-      solvedIn: correct ? triesUsed : null,
-    },
-  });
+  await db.$transaction([
+    db.guess.create({
+      data: buildGuessCreateData({
+        attemptId: input.attempt.id,
+        position: triesUsed,
+        guess: nextGuess,
+      }),
+    }),
+    db.gameAttempt.update({
+      where: {
+        id: input.attempt.id,
+      },
+      data: {
+        gaveUp: false,
+        solved: correct,
+        solvedIn: correct ? triesUsed : null,
+      },
+    }),
+  ]);
 
   return NextResponse.json({
     correct,
@@ -301,6 +247,39 @@ export async function POST(request: Request) {
     noTriesLeft: false,
     gaveUp: false,
     saved: true,
+  });
+}
+
+function buildAttemptResponse(
+  attempt:
+    | {
+        solved: boolean;
+        gaveUp: boolean;
+        guesses: Array<{
+          guess: string;
+          score: number;
+          verdict: string;
+          reason: string;
+          correct: boolean;
+          position: number;
+        }>;
+      }
+    | null,
+  dateKey: string,
+) {
+  const results = attempt ? parseAttemptGuesses(attempt.guesses) : [];
+  const triesUsed = results.length;
+  const isSolved = Boolean(attempt?.solved) || results.some((entry) => entry.correct);
+  const gaveUp = Boolean(attempt?.gaveUp);
+  const puzzle = getDailyPuzzleFromDateKey(dateKey);
+
+  return NextResponse.json({
+    results,
+    triesUsed,
+    isSolved,
+    gaveUp,
+    revealedAnswer: gaveUp ? puzzle.solutionLabel : null,
+    noTriesLeft: false,
   });
 }
 
