@@ -44,14 +44,14 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" size="icon" aria-label="Open settings">
-          <Cog className="h-4 w-4 text-stone-700" />
+          <Cog className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Account Settings</DialogTitle>
+          <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Update your profile preferences and friend code settings.
+            Update your profile, appearance, and friend code settings.
           </DialogDescription>
         </DialogHeader>
         <SettingsPopover

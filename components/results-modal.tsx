@@ -59,7 +59,7 @@ export function ResultsModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <DialogTitle>Daily Result</DialogTitle>
-              <p className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500"></p>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground"></p>
               {hasGivenUp ? (
                 <h2 className="mt-1 text-3xl font-semibold tracking-tight">
                   Gave up after {triesUsed}{" "}
@@ -87,11 +87,13 @@ export function ResultsModal({
           <StatCard label="Median" value={formatStatValue(stats?.median)} />
         </div>
 
-        <Card className="border-stone-300 bg-white">
+        <Card className="border-border bg-card">
           <CardContent>
             <p className="text-sm font-semibold">Distribution</p>
             {isLoadingStats ? (
-              <p className="mt-2 text-sm text-stone-500">Loading chart...</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Loading chart...
+              </p>
             ) : (
               <ul className="mt-3 space-y-2">
                 {distribution.map((bucket) => (
@@ -99,18 +101,18 @@ export function ResultsModal({
                     key={bucket.tries}
                     className="grid grid-cols-[32px_1fr_40px] items-center gap-2 text-sm"
                   >
-                    <span className="font-mono text-stone-500">
+                    <span className="font-mono text-muted-foreground">
                       {bucket.tries}
                     </span>
-                    <div className="h-5 overflow-hidden rounded-full bg-stone-200">
+                    <div className="h-5 overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-stone-800 transition-[width] duration-300"
+                        className="h-full rounded-full bg-primary transition-[width] duration-300"
                         style={{
                           width: `${(bucket.count / maxDistributionCount) * 100}%`,
                         }}
                       />
                     </div>
-                    <span className="text-right font-mono text-stone-600">
+                    <span className="text-right font-mono text-muted-foreground">
                       {bucket.count}
                     </span>
                   </li>
@@ -120,17 +122,19 @@ export function ResultsModal({
           </CardContent>
         </Card>
 
-        <Card className="border-stone-300 bg-white">
+        <Card className="border-border bg-card">
           <CardContent>
             <p className="text-sm font-semibold">Friends</p>
             {status !== "authenticated" ? (
-              <p className="mt-2 text-sm text-stone-500">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Sign in to see friends&apos; results.
               </p>
             ) : isLoadingFriendsResults ? (
-              <p className="mt-2 text-sm text-stone-500">Loading friends...</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Loading friends...
+              </p>
             ) : friendsResults.length === 0 ? (
-              <p className="mt-2 text-sm text-stone-500">
+              <p className="mt-2 text-sm text-muted-foreground">
                 No friends added yet.
               </p>
             ) : (
@@ -138,17 +142,17 @@ export function ResultsModal({
                 {friendsResults.map((entry) => (
                   <li
                     key={`${entry.friendId}-${entry.displayName}`}
-                    className="rounded-lg border border-stone-200 bg-stone-50 p-3"
+                    className="rounded-lg border border-border bg-muted/40 p-3"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-stone-900">
+                      <p className="text-sm font-medium text-foreground">
                         {entry.displayName}
                       </p>
                       <Badge variant={getFriendBadgeVariant(entry.status)}>
                         {getFriendStatusLabel(entry.status)}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-sm text-stone-600">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {formatFriendDetail(entry)}
                     </p>
                   </li>
@@ -173,7 +177,7 @@ export function ResultsModal({
             </Button>
           )}
           {shareUrl ? (
-            <p className="min-w-0 flex-1 break-all font-mono text-xs text-stone-600">
+            <p className="min-w-0 flex-1 break-all font-mono text-xs text-muted-foreground">
               {shareUrl}
             </p>
           ) : null}
@@ -190,9 +194,9 @@ type StatCardProps = {
 
 function StatCard({ label, value }: StatCardProps) {
   return (
-    <Card className="rounded-xl border-stone-300 bg-white">
+    <Card className="rounded-xl border-border bg-card">
       <CardContent className="px-3">
-        <p className="text-xs text-stone-500">{label}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
         <p className="mt-1 text-lg font-semibold">{value}</p>
       </CardContent>
     </Card>

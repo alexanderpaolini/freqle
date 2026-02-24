@@ -76,7 +76,7 @@ export function GamePanel({
   onOpenResults,
 }: GamePanelProps) {
   return (
-    <Card className="shadow-[0_18px_50px_-28px_rgba(31,29,26,0.45)]">
+    <Card className="shadow-[var(--shadow-elevated)]">
       <CardContent className="p-6">
         <AuthHeader
           status={status}
@@ -99,7 +99,9 @@ export function GamePanel({
         />
 
         {status !== "authenticated" ? (
-          <p className="mt-3 text-sm text-stone-600">Log in to save your results!</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Log in to save your results!
+          </p>
         ) : null}
 
         {isPuzzleAvailable ? (
@@ -125,9 +127,13 @@ export function GamePanel({
             <GiveUpBanner revealedAnswer={revealedAnswer} />
           </>
         ) : (
-          <div className="mt-5 rounded-xl border border-stone-300 bg-stone-100 p-5">
-            <h2 className="text-xl font-semibold text-stone-900">No puzzle today :(</h2>
-            <p className="mt-2 text-sm text-stone-700">Check back tomorrow</p>
+          <div className="mt-5 rounded-xl border border-border bg-muted/60 p-5">
+            <h2 className="text-xl font-semibold text-foreground">
+              No puzzle today :(
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Check back tomorrow
+            </p>
           </div>
         )}
       </CardContent>

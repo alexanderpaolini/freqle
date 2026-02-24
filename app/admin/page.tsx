@@ -35,11 +35,11 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#f8efe2_45%,#efe5d6)] px-4 py-8 text-stone-900">
+    <main className="app-shell">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
               freqle admin
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Puzzle Management</h1>
@@ -54,4 +54,3 @@ export default async function AdminPage() {
     </main>
   );
 }
-

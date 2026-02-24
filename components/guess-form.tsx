@@ -51,7 +51,7 @@ export function GuessForm({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
+        <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
           {triesUsed} {triesUsed === 1 ? "attempt" : "attempts"} used
         </p>
 

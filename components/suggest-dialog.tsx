@@ -106,7 +106,7 @@ export function SuggestDialog({
               className="min-h-32"
             />
             <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
+              <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 {remaining} chars left
               </p>
               <Button

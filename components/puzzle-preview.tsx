@@ -8,9 +8,9 @@ type PuzzlePreviewProps = {
 
 export function PuzzlePreview({ subject, entries }: PuzzlePreviewProps) {
   return (
-    <Card className="mt-5 border-stone-300 bg-stone-950 text-stone-100">
+    <Card className="mt-5 border-border bg-preview text-preview-foreground">
       <CardContent>
-        <p className="font-mono text-xs uppercase tracking-[0.14em] text-stone-400">
+        <p className="font-mono text-xs uppercase tracking-[0.14em] text-preview-muted">
           Subject: {subject}
         </p>
         <pre className="mt-2 overflow-x-auto font-mono text-lg leading-relaxed">

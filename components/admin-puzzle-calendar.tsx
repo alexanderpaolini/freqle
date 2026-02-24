@@ -37,7 +37,7 @@ export function AdminPuzzleCalendar({
   ];
 
   return (
-    <div className="rounded-xl border border-amber-300 bg-white p-4">
+    <div className="rounded-xl border border-warning-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <Button
           type="button"
@@ -48,10 +48,10 @@ export function AdminPuzzleCalendar({
             onMonthChange(new Date(year, monthIndex - 1, 1));
           }}
         >
-          <ChevronLeft className="h-4 w-4 text-stone-700" />
+          <ChevronLeft className="h-4 w-4 text-muted-foreground" />
         </Button>
 
-        <p className="text-sm font-semibold text-stone-900">
+        <p className="text-sm font-semibold text-foreground">
           {month.toLocaleString(undefined, {
             month: "long",
             year: "numeric",
@@ -67,11 +67,11 @@ export function AdminPuzzleCalendar({
             onMonthChange(new Date(year, monthIndex + 1, 1));
           }}
         >
-          <ChevronRight className="h-4 w-4 text-stone-700" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-stone-500">
+      <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted-foreground">
         {WEEKDAY_LABELS.map((label) => (
           <div key={label}>{label}</div>
         ))}
@@ -94,8 +94,9 @@ export function AdminPuzzleCalendar({
               size="sm"
               className={cn(
                 "h-9 px-0",
-                hasPuzzle && "border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200",
-                isToday && "border-stone-900 ring-2 ring-stone-900/35",
+                hasPuzzle &&
+                  "border-warning-border bg-warning-muted text-warning-foreground hover:bg-warning-muted/80",
+                isToday && "border-foreground ring-2 ring-ring/35",
               )}
               onClick={() => {
                 onSelectDate(cell.dateKey);
@@ -107,13 +108,9 @@ export function AdminPuzzleCalendar({
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-stone-600">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-sm border border-stone-900 bg-white" />
-          Today
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-sm border border-amber-500 bg-amber-100" />
+          <span className="h-3 w-3 rounded-sm border border-warning-border bg-warning-muted" />
           Has puzzle
         </span>
       </div>

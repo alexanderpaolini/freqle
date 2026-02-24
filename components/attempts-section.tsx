@@ -25,17 +25,17 @@ export function AttemptsSection({
       </CardHeader>
       <CardContent>
         {status === "authenticated" && isLoadingAttempts ? (
-          <p className="mt-1 text-sm text-stone-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Loading saved attempts...
           </p>
         ) : attempts.length === 0 ? (
-          <p className="mt-1 text-sm text-stone-600">No guesses yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground">No guesses yet.</p>
         ) : (
           <ul className="mt-1 space-y-3">
             {attempts.map(({ result, index }) => (
               <li
                 key={`${result.guess}-${index}`}
-                className="rounded-xl border border-stone-300 bg-white p-3"
+                className="rounded-xl border border-border bg-card p-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">{result.guess}</p>
@@ -43,13 +43,13 @@ export function AttemptsSection({
                     {result.correct ? "Accepted" : "Wrong Answer"}
                   </Badge>
                 </div>
-                <p className="mt-2 text-sm text-stone-600">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Closeness score:{" "}
                   <span className="font-semibold">{result.score}</span>/100
                 </p>
                 {displayHints && !result.correct && result.reason ? (
-                  <p className="mt-2 text-sm text-stone-700">
-                    Hint: <span className="text-stone-600">{result.reason}</span>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Hint: <span className="text-muted-foreground/90">{result.reason}</span>
                   </p>
                 ) : null}
               </li>

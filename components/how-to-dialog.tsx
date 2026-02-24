@@ -44,8 +44,8 @@ export function HowToDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 text-sm text-stone-700">
-            <section className="rounded-md border border-stone-200 bg-stone-50 p-3">
+          <div className="space-y-4 text-sm text-muted-foreground">
+            <section className="rounded-md border border-border bg-muted/40 p-3">
               <pre className="mt-2 font-mono text-xs leading-6">
                 {`28: 1
 30: 4
@@ -60,7 +60,7 @@ export function HowToDialog({
               </p>
               <p>
                 A valid guess would be:{" "}
-                <span className="font-semibold text-stone-900">
+                <span className="font-semibold text-foreground">
                   Number of days in each month
                 </span>
                 .

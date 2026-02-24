@@ -22,14 +22,14 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   const playHref = ref ? `/?friend=${encodeURIComponent(ref)}` : "/";
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#efe4d4)] px-4 py-10 text-stone-900">
-      <Card className="mx-auto max-w-xl text-center shadow-[0_18px_50px_-28px_rgba(31,29,26,0.45)]">
+    <main className="app-shell-share">
+      <Card className="mx-auto max-w-xl text-center shadow-[var(--shadow-elevated)]">
         <CardContent className="p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-stone-500">
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
             freqle share
           </p>
           <h1 className="mt-2 text-4xl font-semibold">Daily Result</h1>
-          <p className="mt-4 text-lg text-stone-700">
+          <p className="mt-4 text-lg text-muted-foreground">
             {tries ? (
               <>
                 Solved in <span className="font-semibold">{tries}</span>{" "}
@@ -39,7 +39,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               "No tries count was provided in the share link."
             )}
           </p>
-          <p className="mt-2 text-sm text-stone-500">Puzzle date: {date}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Puzzle date: {date}</p>
 
           <Button asChild className="mt-6">
             <Link href={playHref}>Play today&apos;s puzzle</Link>

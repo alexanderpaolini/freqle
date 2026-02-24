@@ -143,7 +143,7 @@ export function PageClient({
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#f8efe2_45%,#efe5d6)] px-4 py-8 text-stone-900">
+    <main className="app-shell">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
         <GamePanel
           status={status}

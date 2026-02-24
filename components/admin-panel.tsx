@@ -169,11 +169,11 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-amber-300 bg-amber-50/60 p-4">
+      <div className="rounded-xl border border-warning-border bg-warning-muted/60 p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-stone-900">Puzzle Calendar</p>
-            <p className="text-xs text-stone-600">
+            <p className="text-sm font-semibold text-foreground">Puzzle Calendar</p>
+            <p className="text-xs text-muted-foreground">
               Select any day to open that puzzle in an edit/delete dialog.
             </p>
           </div>
@@ -200,7 +200,7 @@ export function AdminPanel() {
           }}
         />
 
-        <p className="mt-3 text-xs text-stone-600">
+        <p className="mt-3 text-xs text-muted-foreground">
           {puzzleCountInViewMonth} puzzle{puzzleCountInViewMonth === 1 ? "" : "s"} in this
           month.
         </p>

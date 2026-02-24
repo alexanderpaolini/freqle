@@ -103,7 +103,7 @@ export function AddFriendDialog({
         onClick={() => setOpen(true)}
         disabled={disabled}
       >
-        <UserPlus className="h-4 w-4 text-stone-700" />
+        <UserPlus className="h-4 w-4 text-muted-foreground" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -127,8 +127,8 @@ export function AddFriendDialog({
               autoComplete="off"
               autoCapitalize="none"
             />
-            <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Your friend ID
               </p>
               <div className="mt-2 flex items-center gap-2">

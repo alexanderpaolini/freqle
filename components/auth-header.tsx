@@ -47,7 +47,7 @@ export function AuthHeader({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-stone-500">
+        <p className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Daily Hashmap Puzzle
         </p>
         <h1 className="text-4xl font-semibold tracking-tight">freqle</h1>
@@ -56,7 +56,7 @@ export function AuthHeader({
       <div className="flex items-center gap-2">
         {status === "authenticated" ? (
           <>
-            <p className="text-sm text-stone-600">@{shownUsername}</p>
+            <p className="text-sm text-muted-foreground">@{shownUsername}</p>
             <AddFriendDialog
               currentFriendId={friendId}
               disabled={isLoadingAccount || isDeletingAccount}
@@ -65,7 +65,7 @@ export function AuthHeader({
             {isAdmin ? (
               <Button asChild type="button" variant="outline" size="icon">
                 <Link href="/admin" aria-label="Open admin page">
-                  <Shield className="h-4 w-4 text-stone-700" />
+                  <Shield className="h-4 w-4 text-muted-foreground" />
                 </Link>
               </Button>
             ) : null}
