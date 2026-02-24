@@ -25,6 +25,7 @@ model Player {
 model Puzzle {
   key       String   @id
   dateKey   String   @unique
+  subject   String
   answer    String
   data      Json
   createdAt DateTime @default(now())

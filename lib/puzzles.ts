@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 export type Puzzle = {
   key: string;
   dateKey: string;
+  subject: string;
   answer: string;
   data: Record<number, number>;
 };
@@ -10,6 +11,7 @@ export type Puzzle = {
 const puzzleSelect = {
   key: true,
   dateKey: true,
+  subject: true,
   answer: true,
   data: true,
 } as const;
@@ -49,7 +51,7 @@ export async function getRequiredPuzzleFromDateKey(
   }
 
   throw new Error(
-    'No puzzles are configured in the database. Run `pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json \'{"key":"puzzle-YYYY-MM-DD","answer":"Example answer","data":{"1":3}}\'` first.',
+    'No puzzles are configured in the database. Run `pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json \'{"key":"puzzle-YYYY-MM-DD","subject":"example-subject","answer":"Example answer","data":{"1":3}}\'` first.',
   );
 }
 
@@ -87,6 +89,7 @@ function parsePuzzle(
     | {
         key: string;
         dateKey: string;
+        subject: string;
         answer: string;
         data: unknown;
       }
@@ -104,14 +107,16 @@ function parsePuzzle(
 
   const key = value.key.trim();
   const dateKey = value.dateKey.trim();
+  const subject = value.subject.trim();
   const answer = value.answer.trim();
-  if (!key || !dateKey || !answer) {
+  if (!key || !dateKey || !subject || !answer) {
     return null;
   }
 
   return {
     key,
     dateKey,
+    subject,
     answer,
     data,
   };

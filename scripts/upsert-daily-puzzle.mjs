@@ -7,10 +7,11 @@ import { PrismaClient } from "../generated/prisma-client/index.js";
 
 const HELP_TEXT = `Usage:
   pnpm puzzle:upsert-day -- --date YYYY-MM-DD --file ./puzzle.json
-  pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json '{"key":"...","answer":"...","data":{"1":2}}'
+  pnpm puzzle:upsert-day -- --date YYYY-MM-DD --json '{"key":"...","subject":"...","answer":"...","data":{"1":2}}'
 
 Optional overrides:
   --key <puzzle-key>
+  --subject <subject>
   --answer <canonical answer>
   --data '<json object>'
 `;
@@ -47,11 +48,13 @@ async function main() {
       create: {
         key: puzzle.key,
         dateKey,
+        subject: puzzle.subject,
         answer: puzzle.answer,
         data: puzzle.data,
       },
       update: {
         key: puzzle.key,
+        subject: puzzle.subject,
         answer: puzzle.answer,
         data: puzzle.data,
       },
@@ -100,6 +103,10 @@ function resolvePuzzleInput(args) {
     merged.answer = args.answer;
   }
 
+  if (args.subject) {
+    merged.subject = args.subject;
+  }
+
   if (args.data) {
     merged.data = parseJson(args.data, "--data");
   }
@@ -122,11 +129,17 @@ function normalizePuzzle(input, dateKey) {
     fail("Puzzle answer is required.");
   }
 
+  const subject = typeof input.subject === "string" ? input.subject.trim() : "";
+  if (!subject) {
+    fail("Puzzle subject is required.");
+  }
+
   const data = normalizeData(input.data);
 
   return {
     key,
     dateKey,
+    subject,
     answer,
     data,
   };

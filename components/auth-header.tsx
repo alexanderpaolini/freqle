@@ -1,14 +1,9 @@
 import type { FormEvent } from "react";
-import { Cog } from "lucide-react";
+import { Shield } from "lucide-react";
+import Link from "next/link";
 import { AddFriendDialog } from "./add-friend-dialog";
-import { AdminPanelDialog } from "./admin-panel-dialog";
+import { SettingsDialog } from "./settings-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { SettingsPopover } from "./settings-popover";
 
 type AuthHeaderProps = {
   status: "authenticated" | "loading" | "unauthenticated";
@@ -62,43 +57,36 @@ export function AuthHeader({
         {status === "authenticated" ? (
           <>
             <p className="text-sm text-stone-600">@{shownUsername}</p>
-            <AddFriendDialog disabled={isLoadingAccount || isDeletingAccount} />
+            <AddFriendDialog
+              currentFriendId={friendId}
+              disabled={isLoadingAccount || isDeletingAccount}
+            />
+
+            {isAdmin ? (
+              <Button asChild type="button" variant="outline" size="icon">
+                <Link href="/admin" aria-label="Open admin page">
+                  <Shield className="h-4 w-4 text-stone-700" />
+                </Link>
+              </Button>
+            ) : null}
+
+            <SettingsDialog
+              open={isSettingsOpen}
+              settingsName={settingsName}
+              displayHints={displayHints}
+              isLoadingAccount={isLoadingAccount}
+              isSavingSettings={isSavingSettings}
+              isDeletingAccount={isDeletingAccount}
+              onOpenChange={onSettingsOpenChange}
+              onSettingsNameChange={onSettingsNameChange}
+              onDisplayHintsChange={onDisplayHintsChange}
+              onSaveSettings={onSaveSettings}
+              onDeleteAccount={onDeleteAccount}
+            />
+
             <Button type="button" variant="outline" onClick={onSignOut}>
               Sign out
             </Button>
-
-            {isAdmin ? <AdminPanelDialog /> : null}
-
-            <DropdownMenu
-              open={isSettingsOpen}
-              onOpenChange={onSettingsOpenChange}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label="Open settings"
-                >
-                  <Cog className="h-4 w-4 text-stone-700" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72 p-0">
-                <SettingsPopover
-                  settingsName={settingsName}
-                  displayHints={displayHints}
-                  friendId={friendId}
-                  isLoadingAccount={isLoadingAccount}
-                  isSavingSettings={isSavingSettings}
-                  isDeletingAccount={isDeletingAccount}
-                  onClose={() => onSettingsOpenChange(false)}
-                  onSettingsNameChange={onSettingsNameChange}
-                  onDisplayHintsChange={onDisplayHintsChange}
-                  onSaveSettings={onSaveSettings}
-                  onDeleteAccount={onDeleteAccount}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
           </>
         ) : (
           <Button type="button" onClick={onSignIn}>

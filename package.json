@@ -12,8 +12,8 @@
     "format": "prettier --write .",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "puzzle:upsert-day": "node scripts/upsert-daily-puzzle.mjs",
-    "user:set-admin": "node scripts/set-user-admin.mjs"
+    "db:upsert-puzzle": "node scripts/upsert-daily-puzzle.mjs",
+    "db:set-admin": "node scripts/set-user-admin.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.1",
@@ -24,6 +24,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.3.1",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

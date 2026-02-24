@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
 
 type GuessFormProps = {
   status: "authenticated" | "loading" | "unauthenticated";
@@ -11,6 +12,7 @@ type GuessFormProps = {
   isGivingUp: boolean;
   isSolved: boolean;
   hasGivenUp: boolean;
+  isPuzzleAvailable: boolean;
   onGuessChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onGiveUp: () => void;
@@ -26,6 +28,7 @@ export function GuessForm({
   isGivingUp,
   isSolved,
   hasGivenUp,
+  isPuzzleAvailable,
   onGuessChange,
   onSubmit,
   onGiveUp,
@@ -37,7 +40,14 @@ export function GuessForm({
         value={guess}
         onChange={(event) => onGuessChange(event.target.value)}
         placeholder="guess goes here"
-        disabled={isLoadingAttempts || isSolved || hasGivenUp || isGivingUp}
+        maxLength={GUESS_MAX_LENGTH}
+        disabled={
+          !isPuzzleAvailable ||
+          isLoadingAttempts ||
+          isSolved ||
+          hasGivenUp ||
+          isGivingUp
+        }
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -69,10 +79,12 @@ export function GuessForm({
                 isSubmitting ||
                 isGivingUp ||
                 hasGivenUp ||
+                !isPuzzleAvailable ||
+                triesUsed >= ATTEMPT_LIMIT ||
                 !guess.trim()
               }
             >
-              {isSubmitting ? "Checking..." : "Submit Guess"}
+              {isSubmitting ? "Checking..." : "Submit"}
             </Button>
           </div>
         )}

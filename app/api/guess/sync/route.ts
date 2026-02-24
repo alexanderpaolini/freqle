@@ -7,6 +7,7 @@ import {
 } from "@/lib/attempts";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
 import {
   getDateKey,
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     ? body.guesses
         .filter((entry): entry is string => typeof entry === "string")
         .map((entry) => entry.trim())
-        .filter(Boolean)
+        .filter((entry) => entry.length > 0 && entry.length <= GUESS_MAX_LENGTH)
     : [];
 
   const player = await db.player.upsert({
@@ -141,7 +142,17 @@ export async function POST(request: Request) {
       triesUsed: existingGuesses.length,
       isSolved: false,
       gaveUp: true,
-      noTriesLeft: false,
+      noTriesLeft: existingGuesses.length >= ATTEMPT_LIMIT,
+    });
+  }
+
+  if (existingGuesses.length >= ATTEMPT_LIMIT) {
+    return NextResponse.json({
+      results: existingGuesses,
+      triesUsed: existingGuesses.length,
+      isSolved: attempt.solved || existingGuesses.some((entry) => entry.correct),
+      gaveUp: false,
+      noTriesLeft: true,
     });
   }
 
@@ -160,7 +171,7 @@ export async function POST(request: Request) {
   const judgedGuesses: AttemptGuess[] = [];
 
   for (const guess of pendingGuesses) {
-    if (solved) {
+    if (solved || nextGuesses.length >= ATTEMPT_LIMIT) {
       break;
     }
 
@@ -229,7 +240,7 @@ export async function POST(request: Request) {
     triesUsed: nextGuesses.length,
     isSolved: solved,
     gaveUp: false,
-    noTriesLeft: false,
+    noTriesLeft: nextGuesses.length >= ATTEMPT_LIMIT,
   });
 }
 

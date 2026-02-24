@@ -7,7 +7,7 @@ const globalForDb = globalThis as unknown as {
 
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) throw new Error("BRO YOU NEED THIS")
+if (!connectionString) throw new Error("BRO YOU NEED THIS");
 
 const adapter = new PrismaPg({ connectionString });
 

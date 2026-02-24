@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,15 +14,34 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { copyTextToClipboard } from "./home-client-utils";
 
 type AddFriendDialogProps = {
+  currentFriendId: string | null;
   disabled?: boolean;
 };
 
-export function AddFriendDialog({ disabled = false }: AddFriendDialogProps) {
+export function AddFriendDialog({
+  currentFriendId,
+  disabled = false,
+}: AddFriendDialogProps) {
   const [open, setOpen] = useState(false);
   const [friendId, setFriendId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function copyFriendId() {
+    if (!currentFriendId) {
+      return;
+    }
+
+    const copied = await copyTextToClipboard(currentFriendId);
+    if (copied) {
+      toast.success("Friend ID copied.");
+      return;
+    }
+
+    toast.error("Could not copy friend ID.");
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,10 +98,12 @@ export function AddFriendDialog({ disabled = false }: AddFriendDialogProps) {
       <Button
         type="button"
         variant="outline"
+        size="icon"
+        aria-label="Add friend"
         onClick={() => setOpen(true)}
         disabled={disabled}
       >
-        Add Friend
+        <UserPlus className="h-4 w-4 text-stone-700" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -105,6 +127,31 @@ export function AddFriendDialog({ disabled = false }: AddFriendDialogProps) {
               autoComplete="off"
               autoCapitalize="none"
             />
+            <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-600">
+                Your friend ID
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  value={currentFriendId ?? ""}
+                  readOnly
+                  placeholder="Unavailable"
+                  className="font-mono text-xs"
+                  disabled={!currentFriendId}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!currentFriendId}
+                  onClick={() => {
+                    void copyFriendId();
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
             <div className="flex justify-end">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Adding..." : "Add"}

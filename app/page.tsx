@@ -73,28 +73,15 @@ export default async function Page({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const shareId = normalizeShareCode(params.share);
   const dailyPuzzle = await getDailyPuzzle();
-  if (!dailyPuzzle) {
-    const exampleCommand = `pnpm puzzle:upsert-day -- --date ${getDateKey()} --json '{"key":"puzzle-${getDateKey()}","answer":"Example answer","data":{"1":3,"2":8}}'`;
-
-    return (
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fef6e7,#f8efe2_45%,#efe5d6)] px-4 py-8 text-stone-900">
-        <div className="mx-auto w-full max-w-3xl rounded-xl border border-stone-300 bg-white p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-            freqle setup
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold">No puzzle configured yet</h1>
-          <p className="mt-3 text-sm text-stone-700">
-            Run <code>{exampleCommand}</code> and refresh.
-          </p>
-        </div>
-      </main>
-    );
-  }
-  const puzzlePreviewEntries = getPuzzlePreviewEntries(dailyPuzzle);
+  const puzzlePreviewEntries = dailyPuzzle
+    ? getPuzzlePreviewEntries(dailyPuzzle)
+    : [];
 
   return (
     <PageClient
       sharedLinkId={shareId}
+      isPuzzleAvailable={Boolean(dailyPuzzle)}
+      puzzleSubject={dailyPuzzle?.subject ?? ""}
       puzzlePreviewEntries={puzzlePreviewEntries}
     />
   );

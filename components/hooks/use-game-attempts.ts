@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
 import type { GuessResult } from "../types";
 import {
   clearAnonymousIdFromStorage,
@@ -160,12 +161,19 @@ export function useGameAttempts({ dateKey, status }: UseGameAttemptsOptions) {
     const trimmedGuess = guess.trim();
     if (
       !trimmedGuess ||
+      trimmedGuess.length > GUESS_MAX_LENGTH ||
       isSubmitting ||
       isGivingUp ||
       isLoadingAttempts ||
       isSolved ||
-      hasGivenUp
+      hasGivenUp ||
+      results.length >= ATTEMPT_LIMIT
     ) {
+      if (trimmedGuess.length > GUESS_MAX_LENGTH) {
+        toast.error(`Guess must be ${GUESS_MAX_LENGTH} characters or fewer.`);
+      } else if (results.length >= ATTEMPT_LIMIT) {
+        toast.error(`You reached the attempt limit (${ATTEMPT_LIMIT}).`);
+      }
       return false;
     }
 

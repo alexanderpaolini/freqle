@@ -1,2 +1,0 @@
-ALTER TABLE "Player"
-ADD COLUMN "displayHints" BOOLEAN NOT NULL DEFAULT false;

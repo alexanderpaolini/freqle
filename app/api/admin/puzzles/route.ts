@@ -7,6 +7,7 @@ import { parsePuzzleData } from "@/lib/puzzles";
 type PuzzleWriteBody = {
   key?: unknown;
   dateKey?: unknown;
+  subject?: unknown;
   answer?: unknown;
   data?: unknown;
 };
@@ -20,6 +21,7 @@ type PuzzleDeleteBody = {
 };
 
 const KEY_PATTERN = /^[a-zA-Z0-9_-]{1,120}$/;
+const SUBJECT_PATTERN = /^[a-zA-Z0-9_-]{1,120}$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET() {
@@ -35,6 +37,7 @@ export async function GET() {
     select: {
       key: true,
       dateKey: true,
+      subject: true,
       answer: true,
       data: true,
     },
@@ -50,11 +53,12 @@ export async function GET() {
       return {
         key: row.key,
         dateKey: row.dateKey,
+        subject: row.subject,
         answer: row.answer,
         data,
       };
     })
-    .filter((entry): entry is { key: string; dateKey: string; answer: string; data: Record<number, number> } => entry !== null);
+    .filter((entry): entry is { key: string; dateKey: string; subject: string; answer: string; data: Record<number, number> } => entry !== null);
 
   return NextResponse.json({ puzzles });
 }
@@ -86,6 +90,7 @@ export async function POST(request: Request) {
       select: {
         key: true,
         dateKey: true,
+        subject: true,
         answer: true,
         data: true,
       },
@@ -95,6 +100,7 @@ export async function POST(request: Request) {
       puzzle: {
         key: created.key,
         dateKey: created.dateKey,
+        subject: created.subject,
         answer: created.answer,
         data: parsePuzzleData(created.data) ?? parsed.value.data,
       },
@@ -146,6 +152,7 @@ export async function PATCH(request: Request) {
       select: {
         key: true,
         dateKey: true,
+        subject: true,
         answer: true,
         data: true,
       },
@@ -155,6 +162,7 @@ export async function PATCH(request: Request) {
       puzzle: {
         key: updated.key,
         dateKey: updated.dateKey,
+        subject: updated.subject,
         answer: updated.answer,
         data: parsePuzzleData(updated.data) ?? parsed.value.data,
       },
@@ -256,6 +264,7 @@ function parsePuzzleWriteBody(
       value: {
         key: string;
         dateKey: string;
+        subject: string;
         answer: string;
         data: Record<number, number>;
       };
@@ -269,6 +278,14 @@ function parsePuzzleWriteBody(
   const dateKey = normalizeDateKey(body.dateKey);
   if (!dateKey) {
     return { error: "dateKey is required (YYYY-MM-DD)." };
+  }
+
+  const subject = normalizeSubject(body.subject);
+  if (!subject) {
+    return {
+      error:
+        "subject is required and may only contain letters, numbers, _ and -.",
+    };
   }
 
   const answer = normalizeAnswer(body.answer);
@@ -288,6 +305,7 @@ function parsePuzzleWriteBody(
     value: {
       key,
       dateKey,
+      subject,
       answer,
       data,
     },
@@ -314,6 +332,19 @@ function normalizeDateKey(value: unknown): string | null {
 
   const normalized = value.trim();
   if (!DATE_KEY_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeSubject(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!normalized || !SUBJECT_PATTERN.test(normalized)) {
     return null;
   }
 

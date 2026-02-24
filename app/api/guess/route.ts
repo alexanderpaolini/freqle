@@ -7,6 +7,7 @@ import {
 } from "@/lib/attempts";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
 import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
 import {
   getDailyPuzzleFromDateKey,
@@ -112,6 +113,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Guess is required." }, { status: 400 });
   }
 
+  if (guess.length > GUESS_MAX_LENGTH) {
+    return NextResponse.json(
+      { error: `Guess must be ${GUESS_MAX_LENGTH} characters or fewer.` },
+      { status: 400 },
+    );
+  }
+
   let puzzle: Puzzle;
   try {
     puzzle = await getRequiredPuzzleFromDateKey(dateKey);
@@ -208,6 +216,13 @@ async function submitGuessToAttempt(input: {
     );
   }
 
+  if (existingResults.length >= ATTEMPT_LIMIT) {
+    return NextResponse.json(
+      { error: `Attempt limit reached (${ATTEMPT_LIMIT}).`, noTriesLeft: true },
+      { status: 409 },
+    );
+  }
+
   let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
   try {
     judgment = await scoreGuessWithOpenRouter({
@@ -257,7 +272,7 @@ async function submitGuessToAttempt(input: {
     verdict: judgment.verdict,
     reason: judgment.reason,
     triesUsed,
-    noTriesLeft: false,
+    noTriesLeft: triesUsed >= ATTEMPT_LIMIT,
     gaveUp: false,
     saved: true,
   });
@@ -285,6 +300,7 @@ async function buildAttemptResponse(
   const isSolved = Boolean(attempt?.solved) || results.some((entry) => entry.correct);
   const gaveUp = Boolean(attempt?.gaveUp);
   const puzzle = await getDailyPuzzleFromDateKey(dateKey);
+  const noTriesLeft = triesUsed >= ATTEMPT_LIMIT;
 
   return NextResponse.json({
     results,
@@ -292,7 +308,7 @@ async function buildAttemptResponse(
     isSolved,
     gaveUp,
     revealedAnswer: gaveUp ? puzzle?.answer ?? null : null,
-    noTriesLeft: false,
+    noTriesLeft,
   });
 }
 

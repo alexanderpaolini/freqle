@@ -17,6 +17,8 @@ type GamePanelProps = {
   isLoadingAccount: boolean;
   isSavingSettings: boolean;
   isDeletingAccount: boolean;
+  isPuzzleAvailable: boolean;
+  puzzleSubject: string;
   previewEntries: PuzzlePreviewEntry[];
   guess: string;
   triesUsed: number;
@@ -50,6 +52,8 @@ export function GamePanel({
   isLoadingAccount,
   isSavingSettings,
   isDeletingAccount,
+  isPuzzleAvailable,
+  puzzleSubject,
   previewEntries,
   guess,
   triesUsed,
@@ -98,24 +102,34 @@ export function GamePanel({
           <p className="mt-3 text-sm text-stone-600">Log in to save your results!</p>
         ) : null}
 
-        <PuzzlePreview entries={previewEntries} />
+        {isPuzzleAvailable ? (
+          <>
+            <PuzzlePreview subject={puzzleSubject} entries={previewEntries} />
 
-        <GuessForm
-          status={status}
-          guess={guess}
-          triesUsed={triesUsed}
-          isLoadingAttempts={isLoadingAttempts}
-          isSubmitting={isSubmitting}
-          isGivingUp={isGivingUp}
-          isSolved={isSolved}
-          hasGivenUp={hasGivenUp}
-          onGuessChange={onGuessChange}
-          onSubmit={onSubmitGuess}
-          onGiveUp={onGiveUp}
-          onOpenResults={onOpenResults}
-        />
+            <GuessForm
+              status={status}
+              guess={guess}
+              triesUsed={triesUsed}
+              isLoadingAttempts={isLoadingAttempts}
+              isSubmitting={isSubmitting}
+              isGivingUp={isGivingUp}
+              isSolved={isSolved}
+              hasGivenUp={hasGivenUp}
+              isPuzzleAvailable={isPuzzleAvailable}
+              onGuessChange={onGuessChange}
+              onSubmit={onSubmitGuess}
+              onGiveUp={onGiveUp}
+              onOpenResults={onOpenResults}
+            />
 
-        <GiveUpBanner revealedAnswer={revealedAnswer} />
+            <GiveUpBanner revealedAnswer={revealedAnswer} />
+          </>
+        ) : (
+          <div className="mt-5 rounded-xl border border-stone-300 bg-stone-100 p-5">
+            <h2 className="text-xl font-semibold text-stone-900">No puzzle today :(</h2>
+            <p className="mt-2 text-sm text-stone-700">Check back tomorrow</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

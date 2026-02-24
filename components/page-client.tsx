@@ -20,11 +20,15 @@ import type { PuzzlePreviewEntry } from "@/components/types";
 
 type PageClientProps = {
   sharedLinkId: string | null;
+  isPuzzleAvailable: boolean;
+  puzzleSubject: string;
   puzzlePreviewEntries: PuzzlePreviewEntry[];
 };
 
 export function PageClient({
   sharedLinkId,
+  isPuzzleAvailable,
+  puzzleSubject,
   puzzlePreviewEntries,
 }: PageClientProps) {
   const { data: session, status } = useSession();
@@ -152,6 +156,8 @@ export function PageClient({
           isLoadingAccount={isLoadingAccount}
           isSavingSettings={isSavingSettings}
           isDeletingAccount={isDeletingAccount}
+          isPuzzleAvailable={isPuzzleAvailable}
+          puzzleSubject={puzzleSubject}
           previewEntries={puzzlePreviewEntries}
           guess={guess}
           triesUsed={triesUsed}
@@ -182,12 +188,14 @@ export function PageClient({
           onOpenResults={() => setIsSolvedModalOpen(true)}
         />
 
-        <AttemptsSection
-          status={status}
-          isLoadingAttempts={isLoadingAttempts}
-          displayHints={displayHints}
-          attempts={attemptsForDisplay}
-        />
+        {isPuzzleAvailable ? (
+          <AttemptsSection
+            status={status}
+            isLoadingAttempts={isLoadingAttempts}
+            displayHints={displayHints}
+            attempts={attemptsForDisplay}
+          />
+        ) : null}
 
         <HomeFooter />
       </div>
