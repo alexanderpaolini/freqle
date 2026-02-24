@@ -1,6 +1,7 @@
 export type Puzzle = {
   id: string;
   preview: Record<number, number>;
+  solutionLabel: string;
   answer: string;
   acceptedAnswers: string[];
 };
@@ -13,6 +14,7 @@ const PUZZLES: Puzzle[] = [
       30: 4,
       31: 7,
     },
+    solutionLabel: "The number of days in each month (non leap year).",
     answer: "the number of days in each month in a non leap year",
     acceptedAnswers: [
       "days in each month",
@@ -21,6 +23,41 @@ const PUZZLES: Puzzle[] = [
       "month lengths",
       "month lengths in a non leap year",
       "days in months non leap year",
+    ],
+  },
+  {
+    id: "weekday-name-lengths",
+    preview: {
+      6: 3,
+      7: 1,
+      8: 2,
+      9: 1,
+    },
+    solutionLabel: "The number of letters in each weekday name.",
+    answer: "the number of letters in each weekday name",
+    acceptedAnswers: [
+      "weekday name lengths",
+      "letters in weekday names",
+      "length of day names",
+      "day of week name lengths",
+    ],
+  },
+  {
+    id: "planet-name-lengths",
+    preview: {
+      4: 1,
+      5: 2,
+      6: 1,
+      7: 4,
+    },
+    solutionLabel:
+      "The number of letters in each planet name (Mercury to Neptune).",
+    answer: "the number of letters in each planet name",
+    acceptedAnswers: [
+      "planet name lengths",
+      "letters in planet names",
+      "solar system planet name lengths",
+      "length of planet names",
     ],
   },
 ];
@@ -67,6 +104,19 @@ export function getDailyPuzzleFromDateKey(dateKey?: string): Puzzle {
   }
 
   return getDailyPuzzle(parsedDate);
+}
+
+export function getPuzzlePreviewEntries(
+  puzzle: Puzzle,
+): Array<{ key: string; value: string }> {
+  return Object.entries(puzzle.preview)
+    .map(([key, value]) => ({
+      numericKey: Number(key),
+      key: String(key),
+      value: String(value),
+    }))
+    .sort((left, right) => left.numericKey - right.numericKey)
+    .map(({ key, value }) => ({ key, value }));
 }
 
 export function normalizeText(text: string): string {

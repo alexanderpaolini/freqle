@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { parseAttemptGuesses } from "@/lib/attempts";
 import { db } from "@/lib/db";
+import { getDailyPuzzle, getPuzzlePreviewEntries } from "@/lib/puzzles";
 import { normalizeShareCode } from "@/lib/share";
 import { HomeClient } from "./home-client";
 
@@ -67,9 +68,14 @@ export async function generateMetadata({
 export default async function Page({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const shareId = normalizeShareCode(params.share);
-  const sharedSummary = shareId ? await getSharedSummary(shareId) : null;
+  const puzzlePreviewEntries = getPuzzlePreviewEntries(getDailyPuzzle());
 
-  return <HomeClient sharedLinkId={shareId} sharedSummary={sharedSummary} />;
+  return (
+    <HomeClient
+      sharedLinkId={shareId}
+      puzzlePreviewEntries={puzzlePreviewEntries}
+    />
+  );
 }
 
 async function getSharedSummary(

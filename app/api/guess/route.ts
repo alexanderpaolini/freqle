@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       triesUsed: 0,
       isSolved: false,
       gaveUp: false,
+      revealedAnswer: null,
       noTriesLeft: false,
     });
   }
@@ -49,12 +50,14 @@ export async function GET(request: Request) {
   const isSolved =
     Boolean(attempt?.solved) || results.some((entry) => entry.correct);
   const gaveUp = Boolean(attempt?.gaveUp);
+  const puzzle = getDailyPuzzleFromDateKey(dateKey);
 
   return NextResponse.json({
     results,
     triesUsed,
     isSolved,
     gaveUp,
+    revealedAnswer: gaveUp ? puzzle.solutionLabel : null,
     noTriesLeft: false,
   });
 }

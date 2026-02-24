@@ -12,20 +12,24 @@ You are shown a hashmap preview:
 
 You must guess what real-world dataset that map represents.
 
-Current default answer set:
+Current puzzle bank includes:
 
 - Number of days in each month (non leap year)
+- Number of letters in each weekday name
+- Number of letters in each planet name (Mercury to Neptune)
 
 ## Features
 
 - Next.js App Router app scaffolded via `create-next-app`
 - Optional Discord authentication using `next-auth`
-- Daily puzzle flow with up to 6 tries and localStorage cache
+- Daily puzzle flow with unlimited tries or give-up, plus localStorage cache
 - Login-after-play sync (anonymous local attempts can be saved to DB later)
 - Account settings popup for username updates and full account/data deletion
 - OpenRouter-based closeness scoring for incorrect guesses
 - Custom 9-char share links on home route (example: `/?share=465r7tyig`) with social metadata and automatic friend-linking
-- Solved-state center popup with avg/median + tries distribution chart and one-click `Share`
+- Share support for both solved and gave-up results
+- Componentized home UI (`app/components/home/*`) for maintainable feature iteration
+- Results center modal with avg/median + tries distribution chart and one-click `Share`
 
 ## Setup
 

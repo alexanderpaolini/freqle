@@ -1,53 +1,32 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Cog } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { redirect } from "next/navigation";
+import { AttemptsSection } from "./components/home/attempts-section";
+import { GamePanel } from "./components/home/game-panel";
+import { ResultsModal } from "./components/home/results-modal";
+import type {
+  DistributionBucket,
+  GuessResult,
+  PuzzlePreviewEntry,
+  PuzzleStats,
+} from "./components/home/types";
 
 const DEFAULT_DISTRIBUTION_BUCKETS = 6;
-const PREVIEW_ENTRIES = [
-  ["28", "1"],
-  ["30", "4"],
-  ["31", "7"],
-] as const;
-const SOLUTION_LABEL = "The number of days in each month (non leap year).";
 const PENDING_SHARE_STORAGE_KEY = "freqle:pending-share-id";
 const OPEN_RESULTS_AFTER_AUTH_STORAGE_KEY = "freqle:open-results-after-auth";
 const SHARE_REQUEST_TIMEOUT_MS = 12000;
 
-type GuessResult = {
-  guess: string;
-  score: number;
-  correct: boolean;
-};
-
-type DistributionBucket = {
-  tries: number;
-  count: number;
-};
-
-type PuzzleStats = {
-  totalSolves: number;
-  average: number | null;
-  median: number | null;
-  distribution: DistributionBucket[];
-};
-
-type SharedSummary = {
-  ownerName: string;
-  tries: number;
-  dateKey: string;
-  gaveUp: boolean;
-};
-
 type HomeClientProps = {
   sharedLinkId: string | null;
-  sharedSummary: SharedSummary | null;
+  puzzlePreviewEntries: PuzzlePreviewEntry[];
 };
 
-export function HomeClient({ sharedLinkId }: HomeClientProps) {
+export function HomeClient({
+  sharedLinkId,
+  puzzlePreviewEntries,
+}: HomeClientProps) {
   const { data: session, status } = useSession();
   const [guess, setGuess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +46,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [results, setResults] = useState<GuessResult[]>([]);
   const [hasGivenUp, setHasGivenUp] = useState(false);
+  const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
 
   const dateKey = useMemo(getDateKey, []);
   const solvedIndex = results.findIndex((entry) => entry.correct);
@@ -107,6 +87,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     const localResults = readAttemptFromStorage(dateKey);
     setResults(localResults);
     setHasGivenUp(false);
+    setRevealedAnswer(null);
     setHasLoadedLocal(true);
   }, [dateKey, status]);
 
@@ -156,12 +137,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
             : [],
         });
       } catch (caught) {
-        if (
-          caught &&
-          typeof caught === "object" &&
-          "name" in caught &&
-          caught.name === "AbortError"
-        ) {
+        if (isAbortError(caught)) {
           return;
         }
       } finally {
@@ -288,11 +264,13 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       return;
     }
 
-    window.sessionStorage.removeItem(OPEN_RESULTS_AFTER_AUTH_STORAGE_KEY);
-    if (isSolved) {
-      setIsSolvedModalOpen(true);
+    if (!isPuzzleComplete) {
+      return;
     }
-  }, [isSolved, status]);
+
+    window.sessionStorage.removeItem(OPEN_RESULTS_AFTER_AUTH_STORAGE_KEY);
+    setIsSolvedModalOpen(true);
+  }, [isPuzzleComplete, status]);
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -301,6 +279,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       setIsSettingsOpen(false);
       setIsLoadingAccount(false);
       setHasGivenUp(false);
+      setRevealedAnswer(null);
       setIsGivingUp(false);
       setGeneratedShareId(null);
       setIsGeneratingShare(false);
@@ -337,12 +316,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         setAccountName(loadedName);
         setSettingsName(loadedName);
       } catch (caught) {
-        if (
-          caught &&
-          typeof caught === "object" &&
-          "name" in caught &&
-          caught.name === "AbortError"
-        ) {
+        if (isAbortError(caught)) {
           return;
         }
         toast.error("Could not load account settings.");
@@ -362,6 +336,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     if (status !== "authenticated") {
       setIsLoadingAttempts(false);
       setHasGivenUp(false);
+      setRevealedAnswer(null);
       setIsGivingUp(false);
       return;
     }
@@ -408,6 +383,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
           error?: string;
           results?: GuessResult[];
           gaveUp?: boolean;
+          revealedAnswer?: string | null;
         };
 
         if (!response.ok) {
@@ -415,15 +391,16 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
           return;
         }
 
+        const nextGaveUp = payload.gaveUp === true;
         setResults(Array.isArray(payload.results) ? payload.results : []);
-        setHasGivenUp(payload.gaveUp === true);
+        setHasGivenUp(nextGaveUp);
+        setRevealedAnswer(
+          nextGaveUp && typeof payload.revealedAnswer === "string"
+            ? payload.revealedAnswer
+            : null,
+        );
       } catch (caught) {
-        if (
-          caught &&
-          typeof caught === "object" &&
-          "name" in caught &&
-          caught.name === "AbortError"
-        ) {
+        if (isAbortError(caught)) {
           return;
         }
         toast.error("Could not load saved attempts.");
@@ -477,8 +454,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
         }
 
         window.sessionStorage.removeItem(PENDING_SHARE_STORAGE_KEY);
-
-        window.location = "/";
+        toast.success("Friend link saved.");
       } catch {
         // Ignore and retry next session refresh.
       }
@@ -578,6 +554,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       const payload = (await response.json()) as {
         error?: string;
         gaveUp?: boolean;
+        revealedAnswer?: string | null;
       };
       if (!response.ok) {
         toast.error(payload.error ?? "Could not give up right now.");
@@ -585,6 +562,9 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       }
 
       setHasGivenUp(payload.gaveUp === true);
+      setRevealedAnswer(
+        typeof payload.revealedAnswer === "string" ? payload.revealedAnswer : null,
+      );
       setIsSolvedModalOpen(false);
       setGeneratedShareId(null);
     } catch {
@@ -767,6 +747,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
       clearFreqleLocalState();
       setResults([]);
       setHasGivenUp(false);
+      setRevealedAnswer(null);
       setIsGivingUp(false);
       setAccountName(null);
       setSettingsName("");
@@ -785,6 +766,7 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
     setResults([]);
     setGuess("");
     setHasGivenUp(false);
+    setRevealedAnswer(null);
     setIsGivingUp(false);
     setGeneratedShareId(null);
     setIsSolvedModalOpen(false);
@@ -794,346 +776,64 @@ export function HomeClient({ sharedLinkId }: HomeClientProps) {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fef6e7,_#f8efe2_45%,_#efe5d6)] px-4 py-8 text-stone-900">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-        <section className="rounded-3xl border border-stone-300/70 bg-[#fffdf7] p-6 shadow-[0_18px_50px_-28px_rgba(31,29,26,0.45)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.16em] text-stone-500">
-                Daily Hashmap Puzzle
-              </p>
-              <h1 className="text-4xl font-semibold tracking-tight">freqle</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              {status === "authenticated" ? (
-                <>
-                  <p className="text-sm text-stone-600">@{shownUsername}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void signOutAndClearLocalData();
-                    }}
-                    className="rounded-full border border-stone-400 bg-white px-4 py-2 text-sm font-medium hover:bg-stone-100"
-                  >
-                    Sign out
-                  </button>
+        <GamePanel
+          status={status}
+          shownUsername={shownUsername}
+          isSettingsOpen={isSettingsOpen}
+          settingsName={settingsName}
+          isLoadingAccount={isLoadingAccount}
+          isSavingSettings={isSavingSettings}
+          isDeletingAccount={isDeletingAccount}
+          previewEntries={puzzlePreviewEntries}
+          guess={guess}
+          triesUsed={triesUsed}
+          isLoadingAttempts={isLoadingAttempts}
+          isSubmitting={isSubmitting}
+          isGivingUp={isGivingUp}
+          isSolved={isSolved}
+          hasGivenUp={hasGivenUp}
+          revealedAnswer={revealedAnswer}
+          onSignIn={() => {
+            void signIn("discord");
+          }}
+          onSignOut={() => {
+            void signOutAndClearLocalData();
+          }}
+          onToggleSettings={() => setIsSettingsOpen((value) => !value)}
+          onCloseSettings={() => setIsSettingsOpen(false)}
+          onSettingsNameChange={setSettingsName}
+          onSaveSettings={saveSettings}
+          onDeleteAccount={deleteAccount}
+          onGuessChange={setGuess}
+          onSubmitGuess={onSubmit}
+          onGiveUp={giveUp}
+          onOpenResults={() => setIsSolvedModalOpen(true)}
+        />
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsSettingsOpen((value) => !value)}
-                      aria-label="Open settings"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-400 bg-white hover:bg-stone-100"
-                    >
-                      <Cog className="h-4 w-4 text-stone-700" />
-                    </button>
-
-                    {isSettingsOpen ? (
-                      <div className="absolute right-0 top-12 z-20 w-72 rounded-2xl border border-stone-300 bg-white p-4 shadow-xl">
-                        <div className="mb-3 flex items-center justify-between">
-                          <p className="text-sm font-semibold">
-                            Account Settings
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setIsSettingsOpen(false)}
-                            className="rounded-full border border-stone-300 px-2 py-0.5 text-xs hover:bg-stone-100"
-                          >
-                            Close
-                          </button>
-                        </div>
-
-                        <form
-                          onSubmit={saveSettings}
-                          className="flex flex-col gap-2"
-                        >
-                          <label
-                            htmlFor="settings-username"
-                            className="text-xs text-stone-500"
-                          >
-                            Username
-                          </label>
-                          <input
-                            id="settings-username"
-                            value={settingsName}
-                            onChange={(event) =>
-                              setSettingsName(event.target.value)
-                            }
-                            maxLength={40}
-                            disabled={
-                              isLoadingAccount ||
-                              isSavingSettings ||
-                              isDeletingAccount
-                            }
-                            className="rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none ring-stone-500 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
-                          />
-                          <button
-                            type="submit"
-                            disabled={
-                              isLoadingAccount ||
-                              isSavingSettings ||
-                              isDeletingAccount
-                            }
-                            className="mt-1 rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
-                          >
-                            {isSavingSettings ? "Saving..." : "Save username"}
-                          </button>
-                        </form>
-
-                        <button
-                          type="button"
-                          onClick={deleteAccount}
-                          disabled={isDeletingAccount || isSavingSettings}
-                          className="mt-3 w-full rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isDeletingAccount
-                            ? "Deleting..."
-                            : "Delete account and all data"}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => signIn("discord")}
-                  className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700"
-                >
-                  Sign in
-                </button>
-              )}
-            </div>
-          </div>
-
-          {status !== "authenticated" ? (
-            <p className="mt-3 text-sm text-stone-600">
-              Log in to save your results!
-            </p>
-          ) : null}
-
-          <div className="mt-5 rounded-2xl border border-stone-300 bg-stone-950 p-4 text-stone-100">
-            <pre className="mt-2 overflow-x-auto font-mono text-lg leading-relaxed">
-              {PREVIEW_ENTRIES.map(
-                ([key, value]) => `${key.padStart(2, " ")}: ${value}\n`,
-              )}
-            </pre>
-          </div>
-
-          <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
-            <textarea
-              value={guess}
-              onChange={(event) => setGuess(event.target.value)}
-              placeholder="guess goes here"
-              disabled={
-                isLoadingAttempts || isSolved || hasGivenUp || isGivingUp
-              }
-              className="min-h-24 w-full rounded-2xl border border-stone-300 bg-white p-3 text-base outline-none ring-stone-500 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
-                {triesUsed} {triesUsed === 1 ? "attempt" : "attempts"} used
-              </p>
-              {isSolved || hasGivenUp ? (
-                <button
-                  type="button"
-                  onClick={() => setIsSolvedModalOpen(true)}
-                  className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700"
-                >
-                  Results
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {status === "authenticated" && !hasGivenUp ? (
-                    <button
-                      type="button"
-                      onClick={giveUp}
-                      disabled={
-                        isLoadingAttempts ||
-                        isSubmitting ||
-                        isGivingUp ||
-                        hasGivenUp
-                      }
-                      className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isGivingUp ? "Giving up..." : "Give up"}
-                    </button>
-                  ) : null}
-                  <button
-                    type="submit"
-                    disabled={
-                      isLoadingAttempts ||
-                      isSubmitting ||
-                      isGivingUp ||
-                      hasGivenUp ||
-                      !guess.trim()
-                    }
-                    className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
-                  >
-                    {isSubmitting ? "Checking..." : "Submit Guess"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </form>
-
-          {hasGivenUp ? (
-            <div className="mt-5 rounded-lg bg-red-100 px-3 py-2 text-sm text-amber-900">
-              <p>You gave up. Today&apos;s answer was: </p>
-              <p className="font-bold">{SOLUTION_LABEL}</p>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="rounded-3xl border border-stone-300/70 bg-[#fffdf7] p-6">
-          <h2 className="text-xl font-semibold">Attempts</h2>
-          {status === "authenticated" && isLoadingAttempts ? (
-            <p className="mt-3 text-sm text-stone-600">
-              Loading saved attempts...
-            </p>
-          ) : results.length === 0 ? (
-            <p className="mt-3 text-sm text-stone-600">No guesses yet.</p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {attemptsForDisplay.map(({ result, index }) => (
-                <li
-                  key={`${result.guess}-${index}`}
-                  className="rounded-xl border border-stone-300 bg-white p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{result.guess}</p>
-                    <p
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${
-                        result.correct
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-rose-100 text-rose-700"
-                      }`}
-                    >
-                      {result.correct ? "Correct" : "Incorrect"}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-sm text-stone-600">
-                    Closeness score:{" "}
-                    <span className="font-semibold">{result.score}</span>/100
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <AttemptsSection
+          status={status}
+          isLoadingAttempts={isLoadingAttempts}
+          attempts={attemptsForDisplay}
+        />
       </div>
 
-      {isSolvedModalOpen ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-4 py-8">
-          <div
-            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-            onClick={() => setIsSolvedModalOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-xl rounded-3xl border border-stone-300 bg-[#fffdf7] p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-                  Daily Result
-                </p>
-                {hasGivenUp ? (
-                  <h2 className="mt-1 text-3xl font-semibold tracking-tight">
-                    Gave up after {triesUsed}{" "}
-                    {triesUsed === 1 ? "attempt" : "attempts"}
-                  </h2>
-                ) : (
-                  <h2 className="mt-1 text-3xl font-semibold tracking-tight">
-                    Solved in {triesUsed}{" "}
-                    {triesUsed === 1 ? "attempts" : "attempt"}
-                  </h2>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSolvedModalOpen(false)}
-                className="rounded-full border border-stone-300 px-3 py-1 text-xs font-medium hover:bg-stone-100"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-              <div className="rounded-xl border border-stone-300 bg-white px-3 py-2">
-                <p className="text-xs text-stone-500">Total Solves</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {stats?.totalSolves ?? 0}
-                </p>
-              </div>
-              <div className="rounded-xl border border-stone-300 bg-white px-3 py-2">
-                <p className="text-xs text-stone-500">Average</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {stats?.average ?? "-"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-stone-300 bg-white px-3 py-2">
-                <p className="text-xs text-stone-500">Median</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {stats?.median ?? "-"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-stone-300 bg-white p-4">
-              <p className="text-sm font-semibold">Distribution</p>
-              {isLoadingStats ? (
-                <p className="mt-2 text-sm text-stone-500">Loading chart...</p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {distribution.map((bucket) => (
-                    <li
-                      key={bucket.tries}
-                      className="grid grid-cols-[32px_1fr_40px] items-center gap-2 text-sm"
-                    >
-                      <span className="font-mono text-stone-500">
-                        {bucket.tries}
-                      </span>
-                      <div className="h-5 overflow-hidden rounded-full bg-stone-200">
-                        <div
-                          className="h-full rounded-full bg-stone-800 transition-[width] duration-300"
-                          style={{
-                            width: `${(bucket.count / maxDistributionCount) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-right font-mono text-stone-600">
-                        {bucket.count}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              {status === "authenticated" ? (
-                <button
-                  type="button"
-                  onClick={shareSolvedResult}
-                  disabled={isGeneratingShare}
-                  className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {isGeneratingShare ? "Sharing..." : "Share"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={signInToShare}
-                  className="rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-700"
-                >
-                  Sign in to Share
-                </button>
-              )}
-              {shareUrl ? (
-                <p className="min-w-0 flex-1 break-all font-mono text-xs text-stone-600">
-                  {shareUrl}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ResultsModal
+        isOpen={isSolvedModalOpen}
+        hasGivenUp={hasGivenUp}
+        triesUsed={triesUsed}
+        stats={stats}
+        isLoadingStats={isLoadingStats}
+        distribution={distribution}
+        maxDistributionCount={maxDistributionCount}
+        status={status}
+        isGeneratingShare={isGeneratingShare}
+        shareUrl={shareUrl}
+        onClose={() => setIsSolvedModalOpen(false)}
+        onShare={() => {
+          void shareSolvedResult();
+        }}
+        onSignInToShare={signInToShare}
+      />
     </main>
   );
 }
@@ -1283,8 +983,8 @@ function clearFreqleLocalState() {
 function isAbortError(value: unknown): boolean {
   return Boolean(
     value &&
-    typeof value === "object" &&
-    "name" in value &&
-    value.name === "AbortError",
+      typeof value === "object" &&
+      "name" in value &&
+      value.name === "AbortError",
   );
 }

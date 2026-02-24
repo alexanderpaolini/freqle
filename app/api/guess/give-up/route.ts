@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getDateKey } from "@/lib/puzzles";
+import { getDailyPuzzleFromDateKey, getDateKey } from "@/lib/puzzles";
 
 type GiveUpBody = {
   dateKey?: unknown;
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   const dateKey = sanitizeDateKey(
     typeof body.dateKey === "string" ? body.dateKey : null,
   );
+  const puzzle = getDailyPuzzleFromDateKey(dateKey);
 
   const player = await db.player.upsert({
     where: {
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       gaveUp: true,
       isSolved: false,
+      revealedAnswer: puzzle.solutionLabel,
     });
   }
 
@@ -95,6 +97,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     gaveUp: true,
     isSolved: false,
+    revealedAnswer: puzzle.solutionLabel,
   });
 }
 
