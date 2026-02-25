@@ -1,4 +1,4 @@
-import type { JudgeVerdict } from "@/lib/openrouter";
+import type { JudgeVerdict } from "@/lib/guess-judge";
 
 export type AttemptGuess = {
   guess: string;

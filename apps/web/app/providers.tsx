@@ -1,12 +1,24 @@
 "use client";
 
+import * as React from "react";
 import { SessionProvider } from "next-auth/react";
-import { ThemeProvider } from "next-themes";
+import {
+  ThemeProvider as NextThemesProvider,
+  type ThemeProviderProps,
+} from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+
+type AppThemeProviderProps = Omit<ThemeProviderProps, "children"> & {
+  children: React.ReactNode;
+};
+
+function AppThemeProvider({ children, ...props }: AppThemeProviderProps) {
+  return React.createElement(NextThemesProvider, props, children);
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider
+    <AppThemeProvider
       attribute="class"
       defaultTheme="dark"
       enableSystem={false}
@@ -16,6 +28,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {children}
         <Toaster position="bottom-center" richColors />
       </SessionProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 }

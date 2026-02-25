@@ -10,16 +10,14 @@ WORKDIR /app
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
-
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app ./
 COPY . .
-RUN pnpm run build
+RUN pnpm --filter @freqle/web build
 
 FROM base AS runner
 
@@ -29,12 +27,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/generated ./generated
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder /app/apps/web ./apps/web
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["pnpm", "--filter", "@freqle/web", "start"]

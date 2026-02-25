@@ -10,145 +10,105 @@ Example puzzle preview:
 31: 7
 ```
 
-Players submit guesses, get scored feedback + hint nudges, and can compare results with friends.
+## Monorepo layout
 
-## Tech stack
-
-- Next.js 16 (App Router)
-- React 19
-- Prisma + PostgreSQL (`@prisma/adapter-pg`)
-- NextAuth (Discord)
-- Tailwind + shadcn/ui
-- OpenRouter for guess judging
-
-## Core features
-
-- Daily puzzles loaded from database by `YYYY-MM-DD`
-- Puzzle schema: `key`, `dateKey`, `subject`, `answer`, `data`
-- Subject label shown above puzzle preview
-- Anonymous play with local storage + sign-in sync
-- Account settings (`display hints`, display name, delete account)
-- Friend IDs + add friend dialog + friends results in results modal
-- Share links with social metadata
-- Admin page (`/admin`) with calendar-based create/edit/delete
-- Limits:
-  - max guess length: `100`
-  - max attempts per day: `100`
-- If there is no puzzle today, UI shows:
-  - `No puzzle today :(`
-  - `Check back tomorrow`
-  while still rendering login/auth controls
+- `apps/web`: Next.js app (existing game UI + web routes)
+- `apps/api`: Python 3 FastAPI service scaffold
+- Root `package.json` scripts namespace by app (`web:*`, `api:*`)
 
 ## Requirements
 
 - Node.js 20+
 - pnpm 10+
+- Python 3.10-3.12 (for `apps/api`)
 - PostgreSQL 16+ (or Docker Compose)
 
 ## Local setup
 
-1. Install dependencies:
+1. Install JS dependencies:
 
 ```bash
 pnpm install
 ```
 
-2. Start Postgres:
-
-```bash
-docker compose up -d postgres
-```
-
-3. Create env file:
+2. Create root env file (used by both web and api scripts):
 
 ```bash
 cp .env.example .env
 ```
 
-4. Fill required env vars:
-
-- `NEXTAUTH_URL` (usually `http://localhost:3000`)
-- `NEXTAUTH_SECRET`
-- `DATABASE_URL`
-- `DISCORD_CLIENT_ID`
-- `DISCORD_CLIENT_SECRET`
-- `OPENROUTER_API_KEY`
-
-Optional:
-
-- `OPENROUTER_MODEL`
-- `OPENROUTER_SITE_URL`
-- `OPENROUTER_APP_NAME`
-
-5. Generate Prisma client and push schema:
+3. Start Postgres:
 
 ```bash
-pnpm db:generate
-pnpm db:push
+docker compose up -d postgres
 ```
 
-6. Start dev server:
+4. Generate Prisma client and push schema for web:
+
+```bash
+pnpm web:db:generate
+pnpm web:db:push
+```
+
+5. Start the web app:
+
+```bash
+pnpm web:dev
+```
+
+6. Initialize Python API virtualenv and start it:
+
+```bash
+pnpm api:setup
+pnpm api:dev
+```
+
+Local URLs:
+
+- Web: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:8000](http://localhost:8000)
+- API health: [http://localhost:8000/health](http://localhost:8000/health)
+
+## Web app scripts
+
+```bash
+pnpm web:dev
+pnpm web:build
+pnpm web:start
+pnpm web:lint
+pnpm web:format
+pnpm web:db:generate
+pnpm web:db:push
+pnpm web:puzzle:upsert-day -- --help
+pnpm web:user:set-admin -- --help
+```
+
+Back-compat aliases remain available:
 
 ```bash
 pnpm dev
+pnpm build
+pnpm start
+pnpm lint
+pnpm format
+pnpm db:generate
+pnpm db:push
+pnpm puzzle:upsert-day -- --help
+pnpm user:set-admin -- --help
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-## Puzzle management
-
-Create/update a day’s puzzle:
+## Python API scripts
 
 ```bash
-pnpm puzzle:upsert-day -- --date 2026-02-24 --json '{"key":"puzzle-2026-02-24","subject":"economics-us-inflation","answer":"United States monthly inflation rate","data":{"1":3,"2":8}}'
+pnpm api:setup
+pnpm api:dev
+pnpm api:lint
+pnpm api:test
 ```
 
-You can also pass `--file` JSON input:
+## Docker (web + api + postgres)
 
-```bash
-pnpm puzzle:upsert-day -- --date 2026-02-24 --file ./today.json
-```
-
-Expected puzzle JSON shape:
-
-```json
-{
-  "key": "puzzle-2026-02-24",
-  "subject": "economics-us-inflation",
-  "answer": "United States monthly inflation rate",
-  "data": {
-    "1": 3,
-    "2": 8
-  }
-}
-```
-
-## Admin access
-
-Grant admin to a user:
-
-```bash
-pnpm user:set-admin -- --id <player_id>
-```
-
-Alternative selectors:
-
-```bash
-pnpm user:set-admin -- --external-id <external_user_id>
-pnpm user:set-admin -- --friend-id <friend_code>
-```
-
-Revoke admin:
-
-```bash
-pnpm user:set-admin -- --id <player_id> --unset
-```
-
-Admin UI is available at [http://localhost:3000/admin](http://localhost:3000/admin) for admin users.
-
-## Docker (production mode)
-
-Build and run app + Postgres:
+Build and run all services:
 
 ```bash
 docker compose up --build -d
@@ -157,33 +117,19 @@ docker compose up --build -d
 On first run, initialize DB schema:
 
 ```bash
-docker compose run --rm app pnpm db:push
+docker compose run --rm web pnpm web:db:push
 ```
 
-Compose reads standard env keys from `.env` and also supports optional `APP_*` overrides:
+Compose reads `.env` directly.
 
-- `APP_NEXTAUTH_URL`
-- `APP_NEXTAUTH_SECRET`
-- `APP_DATABASE_URL`
-- `APP_DISCORD_CLIENT_ID`
-- `APP_DISCORD_CLIENT_SECRET`
-- `APP_OPENROUTER_API_KEY`
-- `APP_OPENROUTER_MODEL`
-- `APP_OPENROUTER_SITE_URL`
-- `APP_OPENROUTER_APP_NAME`
+Docker passes env from root `.env` via `env_file` for all services.
+No env key/value mappings are defined in `docker-compose.yml`.
 
-## Scripts
+For Docker, set these in `.env`:
+- `DATABASE_URL=postgresql://freqle:freqle@postgres:5432/freqle?schema=public`
+- `COSINE_API_BASE_URL=http://api:8000`
 
-```bash
-pnpm dev
-pnpm build
-pnpm lint
-pnpm format
-pnpm db:generate
-pnpm db:push
-pnpm puzzle:upsert-day -- --help
-pnpm user:set-admin -- --help
-```
+The API container persists model/cache files in a Docker volume (`freqle-api-cache`) to avoid repeated cold downloads across restarts.
 
 ## Discord OAuth callback URL
 

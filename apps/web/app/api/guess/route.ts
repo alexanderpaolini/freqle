@@ -8,7 +8,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
-import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
+import { scoreGuessWithCosineApi } from "@/lib/guess-judge";
 import {
   getDailyPuzzleFromDateKey,
   getDateKey,
@@ -223,13 +223,14 @@ async function submitGuessToAttempt(input: {
     );
   }
 
-  let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
+  let judgment: Awaited<ReturnType<typeof scoreGuessWithCosineApi>>;
   try {
-    judgment = await scoreGuessWithOpenRouter({
+    judgment = await scoreGuessWithCosineApi({
       guess: input.guess,
       puzzle: input.puzzle,
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to score guess with cosine API.", error);
     return NextResponse.json(
       { error: "Unable to judge guess right now. Try again." },
       { status: 502 },

@@ -8,7 +8,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ATTEMPT_LIMIT, GUESS_MAX_LENGTH } from "@/lib/game-limits";
-import { scoreGuessWithOpenRouter } from "@/lib/openrouter";
+import { scoreGuessWithCosineApi } from "@/lib/guess-judge";
 import {
   getDateKey,
   getRequiredPuzzleFromDateKey,
@@ -175,10 +175,11 @@ export async function POST(request: Request) {
       break;
     }
 
-    let judgment: Awaited<ReturnType<typeof scoreGuessWithOpenRouter>>;
+    let judgment: Awaited<ReturnType<typeof scoreGuessWithCosineApi>>;
     try {
-      judgment = await scoreGuessWithOpenRouter({ guess, puzzle });
-    } catch {
+      judgment = await scoreGuessWithCosineApi({ guess, puzzle });
+    } catch (error) {
+      console.error("Failed to score synced guess with cosine API.", error);
       return NextResponse.json(
         { error: "Unable to judge local guesses right now. Try again." },
         { status: 502 },

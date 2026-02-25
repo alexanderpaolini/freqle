@@ -1,48 +1,53 @@
 services:
-  app:
+  web:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        DATABASE_URL: ${APP_DATABASE_URL:-${DATABASE_URL:-postgresql://freqle:freqle@postgres:5432/freqle?schema=public}}
-    container_name: freqle-app
+      dockerfile: apps/web/Dockerfile
+    container_name: freqle-web
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     env_file:
       - .env
-    environment:
-      NODE_ENV: production
-      NEXTAUTH_URL: ${APP_NEXTAUTH_URL:-${NEXTAUTH_URL:-http://localhost:3000}}
-      NEXTAUTH_SECRET: ${APP_NEXTAUTH_SECRET:-${NEXTAUTH_SECRET:-change-me}}
-      DATABASE_URL: ${APP_DATABASE_URL:-postgresql://freqle:freqle@postgres:5432/freqle?schema=public}
-      DISCORD_CLIENT_ID: ${APP_DISCORD_CLIENT_ID:-${DISCORD_CLIENT_ID:-}}
-      DISCORD_CLIENT_SECRET: ${APP_DISCORD_CLIENT_SECRET:-${DISCORD_CLIENT_SECRET:-}}
-      OPENROUTER_API_KEY: ${APP_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}
-      OPENROUTER_MODEL: ${APP_OPENROUTER_MODEL:-${OPENROUTER_MODEL:-openai/gpt-4o-mini}}
-      OPENROUTER_SITE_URL: ${APP_OPENROUTER_SITE_URL:-${OPENROUTER_SITE_URL:-http://localhost:3000}}
-      OPENROUTER_APP_NAME: ${APP_OPENROUTER_APP_NAME:-${OPENROUTER_APP_NAME:-freqle}}
     ports:
-      - "3000:3000"
+      - "${WEB_PORT}:3000"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: freqle-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - freqle-api-cache:/root/.cache
+    ports:
+      - "${API_PORT}:8000"
 
   postgres:
     image: postgres:16-alpine
     container_name: freqle-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: freqle
-      POSTGRES_USER: freqle
-      POSTGRES_PASSWORD: freqle
+    env_file:
+      - .env
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - freqle-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U freqle -d freqle"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
   freqle-postgres-data:
+  freqle-api-cache:
