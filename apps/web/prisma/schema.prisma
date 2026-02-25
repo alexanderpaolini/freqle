@@ -84,7 +84,7 @@ model Suggestion {
   playerId  String?
   player    Player?  @relation(fields: [playerId], references: [id], onDelete: SetNull)
   dateKey   String
-  puzzleId  String
+  puzzleId  String?
   text      String
   createdAt DateTime @default(now())
 
